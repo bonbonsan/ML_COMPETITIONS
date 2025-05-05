@@ -1,0 +1,32 @@
+# Cache
+__pycache__/
+.ipynb_checkpoints/
+.pytest_cache/
+.ruff_cache/
+
+# CatBoost
+catboost_info/
+
+# Config
+.env
+.vscode/
+
+# Data
+*.csv
+*.parquet
+*.json
+!my_library/data/samples/**/*.csv
+!my_library/data/samples/*.csv
+
+# Projects & Outputs
+logs/*
+*.pkl
+projects/my_projects/*
+projects/others/*
+
+# Python
+*.py[cod]
+*$py.class
+
+# venv
+kaggle-venv/

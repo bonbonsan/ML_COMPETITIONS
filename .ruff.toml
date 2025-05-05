@@ -1,0 +1,24 @@
+# .ruff.toml
+# ruff check --fix my_library
+
+# 対象のPythonバージョン
+target-version = "py312"
+
+# 行の最大長（デフォルト88）
+line-length = 100
+
+[lint]
+# 有効にするルールセット（分類ごと）
+extend-select = ["E", "F", "B", "I", "N"]
+# 無効にするルールコード（個別に除外）
+ignore = ["N803", "N806", "N815"]
+
+# 除外したいファイルやディレクトリ
+# exclude = ["tests/data", "build", ".venv", "kaggle-venv"]
+
+# ルートディレクトリの指定（通常は不要）
+# project-root = "my_library"
+
+# 自動ソート対象のセクション定義（isort互換）
+[lint.isort]
+known-first-party = ["my_library"]

@@ -1,0 +1,58 @@
+# pip install -r requirements.txt
+
+# Python3.11
+# Data analysis
+numpy==1.26.4
+pandas==2.2.1
+polars==0.20.16
+ydata-profiling==4.14.0
+
+# Visualization
+matplotlib==3.8.3
+seaborn==0.13.2
+plotly==5.21.0
+
+# Scientific computing
+faiss-cpu==1.7.4
+gensim==4.3.2
+implicit==0.7.2
+networkx==3.2.1
+scikit-learn==1.4.1.post1
+# scipy==1.15.2  # gensimが最新のscipyに対応していないのでデグレさせる
+scipy==1.12.0
+
+# GBDT
+xgboost==2.0.3
+lightgbm==4.2.0
+catboost==1.2.2
+
+# DL
+pytorch-tabnet==4.1.0
+tensorflow==2.15.0
+torch==2.2.1
+
+# Hyperparameter
+optuna==4.2.1
+scikit-optimize==0.9.0
+hyperopt==0.2.7
+ray[tune]==2.44.0
+
+# Notebooks
+notebook==7.1.2
+jupyterlab==4.1.4
+ipywidgets==8.1.2
+tqdm==4.66.2
+joblib==1.2.0
+
+requests==2.31.0
+
+# APIs
+kaggle==1.6.12
+yfinance==0.2.36
+
+# Excel support for pandas export
+openpyxl==3.1.2
+
+# Linting & Testing
+ruff==0.3.5
+pytest==8.1.1
