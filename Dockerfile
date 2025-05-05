@@ -23,5 +23,8 @@ RUN pip install --upgrade pip && pip install -r requirements.txt
 # 6. 残りのソースコード一式をコピー（my_library や projectsなど）
 COPY . .
 
-# 7. 起動時にbashへ（対話的に使える）
+# 7. PYTHONPATHを通す（my_library を import 可能にする）
+ENV PYTHONPATH=/workspace
+
+# 8. 起動時にbashへ（対話的に使える）
 CMD ["/bin/bash"]
