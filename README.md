@@ -39,6 +39,24 @@ It is designed for competitive data science tasks (e.g., Kaggle) and provides a 
 
 `pytest my_library/tests/unit/`
 
+## Running in Docker (GPU-accelerated training)
+
+You can also run the entire library inside a Docker container with GPU support (e.g., on Paperspace or AWS).
+
+1. Build the Docker image
+`docker build -t ml-gpu .`
+
+2. Run the container with GPU support
+`docker run --gpus all -it -v $PWD:/workspace ml-gpu`
+
+3. Inside the container, run training scripts
+`python projects/train.py  # or your custom training script`
+
+4. Optional: configure GPU usage via .env
+You can toggle between CPU and GPU execution by editing the .env file:
+`USE_GPU=true  # or false`
+The library will detect this and set use_gpu accordingly during runtime.
+
 ## Notes
 
 - `documents/` contains external learning resources such as cheat sheets and slides.
