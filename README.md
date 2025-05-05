@@ -37,7 +37,7 @@ It is designed for competitive data science tasks (e.g., Kaggle) and provides a 
 
 ## Running Tests
 
-`pytest my\_library/tests/unit/`
+`pytest my_library/tests/unit/`
 
 ## Notes
 
