@@ -39,7 +39,8 @@ tuner_clf = OptunaValidationTuner(
     scoring=None,        # use default metric (accuracy) for classification
     predict_proba=True,
     n_trials=10,
-    maximize=True
+    maximize=True,
+    parallel_mode=True,
 )
 
 # Build fit configuration
@@ -85,7 +86,8 @@ tuner_reg = OptunaValidationTuner(
     scoring=None,        # use default metric (MSE) for regression
     predict_proba=False,
     n_trials=10,
-    maximize=False
+    maximize=False,
+    parallel_mode=True,
 )
 
 # Run hyperparameter tuning

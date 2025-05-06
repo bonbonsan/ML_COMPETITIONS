@@ -24,6 +24,8 @@ class BaseTuner(ABC):
         predict_proba (bool): Whether to use probability predictions for scoring.
         n_trials (int): Number of hyperparameter trials to perform.
         maximize (bool): If True, higher score is better; otherwise, lower score is better.
+        parallel_mode (bool): If True, folds are processed in parallel (CPU only).
+                            If False, folds are processed sequentially.
 
     Attributes:
         best_params (Optional[Dict[str, Any]]): Best hyperparameters found.
@@ -41,6 +43,7 @@ class BaseTuner(ABC):
         predict_proba: bool = False,
         n_trials: int = 20,
         maximize: bool = True,
+        parallel_mode: bool = False
     ):
         self.model_class = model_class
         self.model_configs = model_configs
@@ -51,6 +54,7 @@ class BaseTuner(ABC):
         self.predict_proba = predict_proba
         self.n_trials = n_trials
         self.maximize = maximize
+        self.parallel_mode = parallel_mode
 
         self.best_params: Optional[Dict[str, Any]] = None
         self.best_score: Optional[float] = None

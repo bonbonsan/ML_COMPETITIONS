@@ -1,4 +1,0 @@
-2025-05-06 17:27:40,042 - my_library.utils.timeit - INFO - [Start] ValidationRunner.run
-2025-05-06 17:27:40,172 - my_library.utils.timeit - INFO - [End] ValidationRunner.run - Elapsed: 0.1298 sec
-2025-05-06 17:27:42,602 - my_library.utils.timeit - INFO - [Start] ValidationRunner.run
-2025-05-06 17:27:42,694 - my_library.utils.timeit - INFO - [End] ValidationRunner.run - Elapsed: 0.0918 sec

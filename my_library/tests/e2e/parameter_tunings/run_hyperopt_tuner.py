@@ -31,7 +31,8 @@ tuner_clf = HyperoptValidationTuner(
     scoring=None,           # default metric for classification
     predict_proba=True,
     n_trials=20,
-    maximize=True
+    maximize=True,
+    parallel_mode=True,
 )
 
 # Fit config
@@ -75,7 +76,8 @@ tuner_reg = HyperoptValidationTuner(
     scoring=None,             # default metric for regression
     predict_proba=False,
     n_trials=20,
-    maximize=False
+    maximize=False,
+    parallel_mode=True,
 )
 
 # Run tuning

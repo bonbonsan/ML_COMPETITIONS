@@ -5,6 +5,7 @@ import numpy as np
 
 from my_library.configs.model_configs.fit_configs import FitConfig
 from my_library.parameter_tunings.tuner_base import BaseTuner
+from my_library.utils.timeit import timeit
 from my_library.validations.validation_runner import ValidationRunner
 
 
@@ -18,6 +19,7 @@ class RandomSearchValidationTuner(BaseTuner):
 
     Inherits from BaseTuner.
     """
+    @timeit
     def tune(
         self,
         fit_config: FitConfig,
@@ -53,7 +55,8 @@ class RandomSearchValidationTuner(BaseTuner):
                 model_class=self.model_class,
                 model_configs=self.model_configs,
                 metric_fn=self.scoring,
-                predict_proba=self.predict_proba
+                predict_proba=self.predict_proba,
+                parallel_mode=self.parallel_mode
             )
             result = runner.run(self.folds, fit_config)
             score = result["mean_score"]

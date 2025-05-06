@@ -4,6 +4,7 @@ import optuna
 
 from my_library.configs.model_configs.fit_configs import FitConfig
 from my_library.parameter_tunings.tuner_base import BaseTuner
+from my_library.utils.timeit import timeit
 from my_library.validations.validation_runner import ValidationRunner
 
 
@@ -43,7 +44,8 @@ class OptunaValidationTuner(BaseTuner):
             model_class=self.model_class,
             model_configs=self.model_configs,
             metric_fn=self.scoring,
-            predict_proba=self.predict_proba
+            predict_proba=self.predict_proba,
+            parallel_mode=self.parallel_mode
         )
         result = runner.run(self.folds, self._fit_config)
         score = result["mean_score"]
@@ -59,6 +61,7 @@ class OptunaValidationTuner(BaseTuner):
         # Return objective value (negated if minimizing)
         return score if self.maximize else -score
 
+    @timeit
     def tune(
         self,
         fit_config: FitConfig,

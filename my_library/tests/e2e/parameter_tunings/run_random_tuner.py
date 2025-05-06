@@ -28,7 +28,8 @@ tuner_clf = RandomSearchValidationTuner(
     scoring=None,              # default metric for classification
     predict_proba=True,
     n_trials=10,
-    maximize=True
+    maximize=True,
+    parallel_mode=True,
 )
 
 # Fit config
@@ -67,7 +68,8 @@ tuner_reg = RandomSearchValidationTuner(
     scoring=None,              # default metric for regression
     predict_proba=False,
     n_trials=10,
-    maximize=False
+    maximize=False,
+    parallel_mode=True,
 )
 
 # Fit config

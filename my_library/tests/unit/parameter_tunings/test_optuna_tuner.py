@@ -46,7 +46,8 @@ def tuner_and_data(request):
         scoring=scoring,
         predict_proba=predict_proba,
         n_trials=2,
-        maximize=maximize
+        maximize=maximize,
+        parallel_mode=True,
     )
     fit_config = FitConfig(
         feats=None,

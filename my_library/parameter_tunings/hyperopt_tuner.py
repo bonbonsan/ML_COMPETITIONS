@@ -4,6 +4,7 @@ from hyperopt import STATUS_OK, Trials, fmin, hp, tpe
 
 from my_library.configs.model_configs.fit_configs import FitConfig
 from my_library.parameter_tunings.tuner_base import BaseTuner
+from my_library.utils.timeit import timeit
 from my_library.validations.validation_runner import ValidationRunner
 
 
@@ -51,7 +52,8 @@ class HyperoptValidationTuner(BaseTuner):
             model_class=self.model_class,
             model_configs=self.model_configs,
             metric_fn=self.scoring,
-            predict_proba=self.predict_proba
+            predict_proba=self.predict_proba,
+            parallel_mode=self.parallel_mode
         )
         result = runner.run(self.folds, fit_config)
         score = result['mean_score']
@@ -70,6 +72,7 @@ class HyperoptValidationTuner(BaseTuner):
         loss = -score if self.maximize else score
         return {'loss': loss, 'status': STATUS_OK}
 
+    @timeit
     def tune(
         self,
         fit_config: FitConfig,

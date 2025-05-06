@@ -44,7 +44,8 @@ def tuner_and_data(request):
         folds=folds,
         scoring=scoring,
         predict_proba=predict_proba,
-        maximize=maximize
+        maximize=maximize,
+        parallel_mode=True,
     )
     fit_config = FitConfig(
         feats=None,

@@ -60,7 +60,7 @@ class ValidationRunner:
         predict_proba: bool = False,
         return_labels: bool = True,
         binary_threshold: float = 0.5,
-        parallel_mode: bool = True
+        parallel_mode: bool = False
     ):
         self.model_class = model_class
         self.model_configs = model_configs

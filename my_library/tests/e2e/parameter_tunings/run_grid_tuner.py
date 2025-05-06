@@ -30,7 +30,8 @@ tuner_clf = GridSearchValidationTuner(
     folds=clf_folds,
     scoring=None,        # default metric for classification (e.g., accuracy)
     predict_proba=True,
-    maximize=True
+    maximize=True,
+    parallel_mode=True,
 )
 
 # Fit config
@@ -69,7 +70,8 @@ tuner_reg = GridSearchValidationTuner(
     folds=reg_folds,
     scoring=None,        # default metric for regression (e.g., MSE)
     predict_proba=False,
-    maximize=False
+    maximize=False,
+    parallel_mode=True,
 )
 
 # You can reuse fit_cfg or customize for regression
