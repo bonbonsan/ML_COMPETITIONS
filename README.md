@@ -74,9 +74,9 @@ You can also run the entire library inside a Docker container with GPU support (
    `echo $USE_GPU`  
    `echo $PYTHONPATH`  
 
-5. To run jupyter notebook:
-   `jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root`  
-   Access to `http://localhost:8888/lab`
+5. To run Jupyter Notebook:  
+   Inside the container, a helper script is pre-installed to simplify starting Jupyter Lab.  
+   Simply run: `jupyter-lab.sh`
 
 6. Exiting the container  
    Simply type: `exit`
