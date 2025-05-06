@@ -27,11 +27,15 @@ RUN pip install --upgrade pip && \
     pip install torch==2.2.1+cu121 torchvision==0.17.1+cu121 torchaudio==2.2.1+cu121 --extra-index-url https://download.pytorch.org/whl/cu121 && \
     pip install -r requirements.txt
 
-# 7. 残りのソースコード（my_libraryやprojectsなど）をコピー
+# 7. Jupyter起動スクリプトをコピーして実行可能にする
+COPY scripts/jupyter-lab.sh /usr/local/bin/jupyter-lab.sh
+RUN chmod +x /usr/local/bin/jupyter-lab.sh
+
+# 8. 残りのソースコード（my_libraryやprojectsなど）をコピー
 COPY . .
 
-# 8. PYTHONPATH を通す（自作ライブラリの import のため）
+# 9. PYTHONPATH を通す（自作ライブラリの import のため）
 ENV PYTHONPATH=/workspace
 
-# 9. コンテナ起動時は bash（VSCodeターミナルなどで使う前提）
+# 10. コンテナ起動時は bash（VSCodeターミナルなどで使う前提）
 CMD ["/bin/bash"]
