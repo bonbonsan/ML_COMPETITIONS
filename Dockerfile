@@ -23,7 +23,9 @@ COPY .env.example .env
 
 # 6. requirements.txt をコピーして install（GPU対応修正済み）
 COPY requirements.txt .
-RUN pip install --upgrade pip && pip install -r requirements.txt
+RUN pip install --upgrade pip && \
+    pip install torch==2.2.1+cu121 torchvision==0.17.1+cu121 torchaudio==2.2.1+cu121 --extra-index-url https://download.pytorch.org/whl/cu121 && \
+    pip install -r requirements.txt
 
 # 7. 残りのソースコード（my_libraryやprojectsなど）をコピー
 COPY . .

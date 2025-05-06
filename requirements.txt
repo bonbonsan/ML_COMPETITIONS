@@ -27,13 +27,17 @@ lightgbm==4.2.0
 catboost==1.2.2
 
 # DL (CUDA 12.1 対応版、torch公式extra indexを追加)
-torch==2.2.1+cu121
-torchvision==0.17.1+cu121
-torchaudio==2.2.1+cu121
 pytorch-tabnet==4.1.0
 tensorflow==2.15.0
 
---extra-index-url https://download.pytorch.org/whl/cu121
+# VSCode上でDockerを操作する際のエラー回避
+# --extra-index-url https://download.pytorch.org/whl/cu121
+# torch==2.2.1+cu121
+# torchvision==0.17.1+cu121
+# torchaudio==2.2.1+cu121
+torch==2.2.1
+torchvision==0.17.1
+torchaudio==2.2.1
 
 # Hyperparameter
 optuna==4.2.1
