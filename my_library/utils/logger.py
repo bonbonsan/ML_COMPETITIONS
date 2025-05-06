@@ -18,6 +18,10 @@ import os
 from datetime import datetime
 from logging.handlers import RotatingFileHandler
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
 
 class Logger:
     """Encapsulates logging configuration.
@@ -30,8 +34,8 @@ class Logger:
         self,
         name: str = __name__,
         log_dir: str = "my_library/logs",
-        level: int = logging.INFO,
-        save_to_file: bool = False
+        level: int = None,
+        save_to_file: bool = None
     ) -> None:
         """Initializes the Logger class.
 
@@ -41,8 +45,14 @@ class Logger:
             level (int): Logging level (e.g., logging.INFO).
             save_to_file (bool): Whether to save logs to a file. Default is False.
         """
+        self.level = level or getattr(logging, os.getenv("LOG_LEVEL", "INFO").upper(), logging.INFO)
+        if save_to_file is not None:
+            self.save_to_file = save_to_file
+        else:
+            self.save_to_file = os.getenv("SAVE_LOG_TO_FILE", "False") == "True"
+
         self.logger = logging.getLogger(name)
-        self.logger.setLevel(level)
+        self.logger.setLevel(self.level)
         self.logger.propagate = False  # Prevent duplicate logs
 
         if not self.logger.handlers:
@@ -56,7 +66,7 @@ class Logger:
             self.logger.addHandler(console_handler)
 
             # Optional rotating file handler
-            if save_to_file:
+            if self.save_to_file:
                 os.makedirs(log_dir, exist_ok=True)
 
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")

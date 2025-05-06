@@ -11,6 +11,7 @@ from my_library.configs.model_configs.base_configs import ConfigBase
 from my_library.configs.model_configs.fit_configs import FitConfig
 from my_library.models.interface import CustomModelInterface
 from my_library.utils.logger import Logger
+from my_library.utils.timeit import timeit
 from my_library.validations.validator import Validator
 
 logger = Logger(__name__, save_to_file=False).get_logger()
@@ -77,6 +78,7 @@ class ValidationRunner:
             f"task={model_configs.task_type}"
         )
 
+    @timeit
     def run(self, folds, fit_config):
         """
         Run validation on given folds. Dispatches to parallel or sequential processing
