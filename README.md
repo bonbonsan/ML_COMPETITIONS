@@ -24,16 +24,17 @@ It is designed for competitive data science tasks (e.g., Kaggle) and provides a 
 
 ## Setup Instructions
 
-1. Clone the repository:
-`git clone [https://github.com/your-username/ML\_COMPETITIONS.git](https://github.com/your-username/ML_COMPETITIONS.git)`
-`cd ML\_COMPETITIONS`
+1. Clone the repository:  
+   `git clone https://github.com/bonbonsan/ML_COMPETITIONS.git`  
+   `cd ML_COMPETITIONS`
 
-2. Create and activate a virtual environment (Python 3.11):
-`python3.11 -m venv venv`
-`source venv/bin/activate  # On Windows: venv\Scripts\activate`
+2. Create and activate a virtual environment (Python 3.11):  
+   `python3.11 -m venv venv`  
+   `source venv/bin/activate`  ← macOS/Linux  
+   `venv\Scripts\activate`     ← Windows
 
-3. Install required packages:
-`pip install -r requirements.txt`
+3. Install required packages:  
+   `pip install -r requirements.txt`
 
 ## Running Tests
 
@@ -43,19 +44,35 @@ It is designed for competitive data science tasks (e.g., Kaggle) and provides a 
 
 You can also run the entire library inside a Docker container with GPU support (e.g., on Paperspace or AWS).
 
-1. Build the Docker image
-`docker build -t ml-gpu .`
+1. Create a .env file from the template  
+   `cp .env.example .env`  
+   Edit the .env file to configure runtime behavior:  
+   `USE_GPU=False     # Set to True when using GPU`  
+   `PYTHONPATH=.      # Required for resolving my_library imports`  
+   ⚠️ .env is excluded from Git and Docker build (.gitignore, .dockerignore) and should not be committed.
 
-2. Run the container with GPU support
-`docker run --gpus all -it -v $PWD:/workspace ml-gpu`
+2. Build the Docker image  
+   `docker build -t ml-gpu .`
 
-3. Inside the container, run training scripts
-`python projects/train.py  # or your custom training script`
+3. Run the container (with GPU support if available)  
+   `docker run --env-file .env -it -v $PWD:/workspace ml-gpu`
+   - --env-file .env: Injects environment variables into the container
+   - -v $PWD:/workspace: Mounts the project into /workspace inside the container
+   - -it: Runs interactively with terminal access
+   If using GPU (e.g., on Paperspace), you may also add:
+   `--gpus all`
+   to enable GPU access.
 
-4. Optional: configure GPU usage via .env
-You can toggle between CPU and GPU execution by editing the .env file:
-`USE_GPU=true  # or false`
-The library will detect this and set use_gpu accordingly during runtime.
+4. Inside the container, You can run training or testing as usual:  
+   `pytest my_library/tests/unit/`
+   `python projects/train.py`
+   To check environment variables:
+   `echo $USE_GPU`
+   `echo $PYTHONPATH`
+
+5. Exiting the container  
+   Simply type:
+`   exit`
 
 ## Notes
 
