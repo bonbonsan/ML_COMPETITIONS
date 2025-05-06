@@ -42,7 +42,8 @@ def runner_and_data(request):
         metric_fn=None,
         predict_proba=(task_type == "classification"),
         return_labels=True,
-        binary_threshold=0.5
+        binary_threshold=0.5,
+        parallel_mode=True
     )
     return task_type, X, y, folds, fit_config, runner
 

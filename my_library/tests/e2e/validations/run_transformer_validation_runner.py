@@ -68,7 +68,8 @@ def run_classification_cv():
         metric_fn=accuracy_score,
         predict_proba=True,
         return_labels=True,
-        binary_threshold=0.5
+        binary_threshold=0.5,
+        parallel_mode=False
     )
 
     # Run CV
@@ -171,7 +172,8 @@ def run_regression_cv():
         model_configs=reg_config,
         metric_fn=mean_squared_error,
         predict_proba=False,
-        return_labels=False
+        return_labels=False,
+        parallel_mode=False
     )
 
     # Run CV

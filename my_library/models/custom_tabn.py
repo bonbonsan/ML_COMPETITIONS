@@ -2,7 +2,6 @@ import os
 
 import numpy as np
 import pandas as pd
-import torch
 from pytorch_tabnet.tab_model import TabNetClassifier, TabNetRegressor
 from sklearn.base import BaseEstimator
 from sklearn.inspection import permutation_importance
@@ -37,7 +36,7 @@ class CustomTabNetModel(CustomModelInterface, BaseEstimator):
         self.use_gpu = config.use_gpu
         self.save_log = config.save_log
         
-        self.device = get_device()
+        self.device = get_device(self.use_gpu)
         self.logger = Logger(self.__class__.__name__, save_to_file=self.save_log).get_logger()
         self.logger.info(f"Initialized {self.__class__.__name__} on device={self.device}.")
 

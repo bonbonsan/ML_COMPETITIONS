@@ -1,4 +1,5 @@
 import os
+from concurrent.futures import ThreadPoolExecutor
 from typing import Callable, Dict, List, Optional, Tuple, Union
 
 import matplotlib.pyplot as plt
@@ -18,6 +19,10 @@ logger = Logger(__name__, save_to_file=False).get_logger()
 class ValidationRunner:
     """
     Flexible validation runner for holdout and cross-validation with extended utilities.
+    This version supports optional parallelization for CPU-based models.
+
+    - If model.use_gpu is True, folds are processed sequentially.
+    - If model.use_gpu is False, folds are processed in parallel using threads.
 
     Attributes:
         model_class: Class implementing CustomModelInterface.
@@ -53,7 +58,8 @@ class ValidationRunner:
         metric_fn: Optional[Callable] = None,
         predict_proba: bool = False,
         return_labels: bool = True,
-        binary_threshold: float = 0.5
+        binary_threshold: float = 0.5,
+        parallel_mode: bool = True
     ):
         self.model_class = model_class
         self.model_configs = model_configs
@@ -61,6 +67,7 @@ class ValidationRunner:
         self.predict_proba = predict_proba
         self.return_labels = return_labels
         self.binary_threshold = binary_threshold
+        self.parallel_mode = parallel_mode
 
         self.folds = None
         self.results = None
@@ -70,13 +77,10 @@ class ValidationRunner:
             f"task={model_configs.task_type}"
         )
 
-    def run(
-        self,
-        folds: List[Tuple[Tuple[pd.DataFrame, pd.Series], Tuple[pd.DataFrame, pd.Series]]],
-        fit_config: FitConfig
-    ) -> Dict[str, Union[List[float], float, List[dict], List[pd.Series], str]]:
+    def run(self, folds, fit_config):
         """
-        Execute validation across provided folds.
+        Run validation on given folds. Dispatches to parallel or sequential processing
+        depending on whether the model uses GPU.
 
         Args:
             folds: List of ((X_train, y_train), (X_valid, y_valid)) tuples.
@@ -95,52 +99,137 @@ class ValidationRunner:
         """
         logger.info("Validation run started.")
         self.folds = folds
+        use_gpu = getattr(self.model_class(self.model_configs), "use_gpu", False)
 
-        task_type = self.model_configs.task_type
-        scores, preds, models, params = [], [], [], []
+        if use_gpu or not self.parallel_mode:
+            self.results = self._run_folds_sequential(folds, fit_config)
+        else:
+            self.results = self._run_folds_parallel(folds, fit_config)
+        
+        return self.results
+        
+    def _run_fold(self, i, X_tr, y_tr, X_val, y_val, fit_config):
+        """
+        Execute training, prediction, and evaluation for a single fold.
 
-        for i, ((X_tr, y_tr), (X_val, y_val)) in enumerate(folds):
-            logger.info(f"[Fold {i+1}] Train={X_tr.shape} Valid={X_val.shape}")
-            model = self.model_class(self.model_configs)
-            fold_fc = FitConfig(
-                feats=fit_config.feats,
-                eval_set=[(X_val, y_val)],
-                early_stopping_rounds=fit_config.early_stopping_rounds,
-                epochs=fit_config.epochs,
-                batch_size=fit_config.batch_size
+        Args:
+            fold_index (int): Index of the fold being processed.
+            fold (Tuple): A tuple containing training and validation data.
+                - Tuple[(X_train, y_train), (X_valid, y_valid)]:
+                  X_train and X_valid are pandas DataFrames of features.
+                  y_train and y_valid are pandas Series of targets.
+            fit_config (FitConfig): Configuration object specifying:
+                - feats (list[str]): Optional list of selected features.
+                - eval_set (List[Tuple[pd.DataFrame, pd.Series]]): Optional validation set.
+                - early_stopping_rounds (int): Number of rounds for early stopping.
+                - epochs (int): Total training epochs.
+                - batch_size (int): Batch size during training.
+
+        Returns:
+            Tuple containing:
+                - score (float): Validation metric score for this fold.
+                - y_pred (pd.Series): Model predictions on the validation set.
+                - model (CustomModelInterface): Trained model instance for this fold.
+                - params (dict): Model's configuration parameters after training.
+        """
+        model = self.model_class(self.model_configs)
+        logger.info(
+            f"[Fold {i+1}] Train={X_tr.shape}, Valid={X_val.shape}, \
+                use_gpu={getattr(model, 'use_gpu', False)}"
             )
-            # use validator variable for readability
-            validator = Validator(model)
-            validator.train(X_tr, y_tr, fit_config=fold_fc)
 
-            # Prediction logic
-            if self.predict_proba and task_type == "classification":
-                proba = validator.predict_proba(X_val)
-                if self.return_labels:
-                    if proba.shape[1] > 1:
-                        y_pred = pd.Series(proba.values.argmax(axis=1), index=X_val.index)
-                    else:
-                        y_pred = pd.Series(
-                            (proba > self.binary_threshold).astype(int).ravel(), index=X_val.index
-                            )
+        fold_fc = FitConfig(
+            feats=fit_config.feats,
+            eval_set=[(X_val, y_val)],
+            early_stopping_rounds=fit_config.early_stopping_rounds,
+            epochs=fit_config.epochs,
+            batch_size=fit_config.batch_size
+        )
+        validator = Validator(model)
+        validator.train(X_tr, y_tr, fit_config=fold_fc)
+
+        if self.predict_proba and self.model_configs.task_type == "classification":
+            proba = validator.predict_proba(X_val)
+            if self.return_labels:
+                if proba.shape[1] > 1:
+                    y_pred = pd.Series(proba.values.argmax(axis=1), index=X_val.index)
                 else:
-                    y_pred = pd.DataFrame(proba, index=X_val.index)
+                    y_pred = pd.Series(
+                        (proba > self.binary_threshold).astype(int).ravel(), index=X_val.index
+                        )
             else:
-                y_pred = validator.predict(X_val)
+                y_pred = pd.DataFrame(proba, index=X_val.index)
+        else:
+            y_pred = validator.predict(X_val)
 
-            # evaluate using the same validator instance
-            score = validator.evaluate(y_val, y_pred, metric_fn=self.metric_fn)
-            logger.info(f"[Fold {i+1}] Score={score:.4f}")
+        score = validator.evaluate(y_val, y_pred, metric_fn=self.metric_fn)
+        logger.info(f"[Fold {i+1}] Score={score:.4f}")
 
+        return score, y_pred, model, model.get_params()
+
+    def _run_folds_sequential(self, folds, fit_config):
+        """
+        Process all CV folds sequentially (used when model uses GPU).
+
+        Args:
+            folds (List): List of fold data in the format:
+                List[Tuple[Tuple[X_train, y_train], Tuple[X_valid, y_valid]]]
+            fit_config (FitConfig): Configuration for model training.
+
+        Returns:
+            Tuple:
+                - scores (List[float]): List of scores for each fold.
+                - preds (List[pd.Series]): List of predictions for each fold.
+                - models (List[CustomModelInterface]): Trained models for each fold.
+                - params (List[dict]): List of model parameters for each fold.
+        """
+        scores, preds, models, params = [], [], [], []
+        for i, ((X_tr, y_tr), (X_val, y_val)) in enumerate(folds):
+            score, pred, model, param = self._run_fold(i, X_tr, y_tr, X_val, y_val, fit_config)
             scores.append(score)
-            preds.append(y_pred)
+            preds.append(pred)
             models.append(model)
-            params.append(model.get_params())
+            params.append(param)
+        return self._build_result(scores, preds, models, params)
 
+    def _run_folds_parallel(self, folds, fit_config):
+        """
+        Process all CV folds in parallel (used when model does not use GPU).
+
+        Args:
+            folds (List): List of fold data in the format:
+                List[Tuple[Tuple[X_train, y_train], Tuple[X_valid, y_valid]]]
+            fit_config (FitConfig): Configuration for model training.
+
+        Returns:
+            Tuple:
+                - scores (List[float]): List of scores for each fold.
+                - preds (List[pd.Series]): List of predictions for each fold.
+                - models (List[CustomModelInterface]): Trained models for each fold.
+                - params (List[dict]): List of model parameters for each fold.
+        """
+        with ThreadPoolExecutor() as executor:
+            futures = [
+                executor.submit(self._run_fold, i, X_tr, y_tr, X_val, y_val, fit_config)
+                for i, ((X_tr, y_tr), (X_val, y_val)) in enumerate(folds)
+            ]
+            results = [f.result() for f in futures]
+
+        scores, preds, models, params = zip(*results, strict=False)
+        return self._build_result(list(scores), list(preds), list(models), list(params))
+    
+    def _build_result(self, scores, preds, models, params):
+        """
+        Build the final results dictionary.
+
+        Returns:
+            Dict: Dictionary containing scores, predictions, models, etc.
+        """
+        task_type = self.model_configs.task_type
         mean_score, std_score = float(np.mean(scores)), float(np.std(scores))
         logger.info(f"Validation completed | mean={mean_score:.4f} std={std_score:.4f}")
 
-        self.results = {
+        return {
             "fold_scores": scores,
             "mean_score": mean_score,
             "std_score": std_score,
@@ -152,7 +241,6 @@ class ValidationRunner:
             ),
             "task_type": task_type
         }
-        return self.results
 
     def run_predict_on_test(
         self,
