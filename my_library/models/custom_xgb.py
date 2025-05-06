@@ -40,6 +40,7 @@ class CustomXGBoost(CustomModelInterface, BaseEstimator):
 
         self.model = None
         self.used_features = None
+        self._early_stopping_rounds = None
 
         self.target_name: str = "target"
 
@@ -54,9 +55,8 @@ class CustomXGBoost(CustomModelInterface, BaseEstimator):
             })
         
         # early_stopping_rounds should be set here for compatibility
-        if "early_stopping_rounds" in params:
-            # XGBoost will log a warning if left in fit; passing via constructor avoids deprecation
-            params.setdefault("early_stopping_rounds", params.pop("early_stopping_rounds"))
+        if hasattr(self, "_early_stopping_rounds") and self._early_stopping_rounds is not None:
+            params["early_stopping_rounds"] = self._early_stopping_rounds
 
         if self.task_type == "classification":
             self.model = xgb.XGBClassifier(**params)
@@ -101,7 +101,9 @@ class CustomXGBoost(CustomModelInterface, BaseEstimator):
 
         # incorporate early_stopping_rounds into params
         if fit_config.early_stopping_rounds is not None:
-            self.params["early_stopping_rounds"] = fit_config.early_stopping_rounds
+            self._early_stopping_rounds = fit_config.early_stopping_rounds
+        else:
+            self._early_stopping_rounds = None
 
         # build model with updated params
         self.build_model()

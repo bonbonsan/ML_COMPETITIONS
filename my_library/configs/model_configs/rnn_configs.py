@@ -2,6 +2,7 @@ from dataclasses import dataclass, field
 from typing import Dict, Literal
 
 from my_library.configs.model_configs.base_configs import ConfigBase
+from my_library.utils.env_loader import use_gpu_enabled
 
 
 @dataclass
@@ -17,7 +18,7 @@ class RNNConfig(ConfigBase):
     """
     model_name: str = "rnn"
     task_type: Literal["classification", "regression"] = "regression"
-    use_gpu: bool = False
+    use_gpu: bool = use_gpu_enabled()
     save_log: bool = False
     params: Dict = field(default_factory=lambda: {
         "input_size": 1,

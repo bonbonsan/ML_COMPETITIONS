@@ -31,13 +31,12 @@ class CustomRandomForest(CustomModelInterface, BaseEstimator):
             config (RandomForestConfig): Configuration object containing:
                 - model_name (str)
                 - task_type (Literal['classification','regression'])
-                - use_gpu (bool)        # not natively supported by sklearn
                 - save_log (bool)
                 - params (dict)         # hyperparameters for RF
         """
         self.model_name = config.model_name
         self.task_type = config.task_type
-        self.use_gpu = config.use_gpu
+        # self.use_gpu = config.use_gpu
         self.params = config.params or {}
 
         self.logger = Logger(self.__class__.__name__, save_to_file=config.save_log).get_logger()

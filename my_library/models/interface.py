@@ -13,6 +13,21 @@ class CustomModelInterface(ABC):
     """
 
     @abstractmethod
+    def build_model(self) -> None:
+        """Initialize and configure the underlying model architecture.
+
+        This method should construct the core model (e.g., LightGBM, CatBoost, PyTorch model),
+        apply any internal hyperparameters, and prepare the model instance for training.
+
+        It is typically called once before training (e.g., inside `fit()`),
+        and should not depend on training data directly.
+
+        Example:
+            model.build_model()
+        """
+        pass
+
+    @abstractmethod
     def fit(self, X: pd.DataFrame, y: pd.Series, fit_config: FitConfig) -> None:
         """Train the model on the provided data.
 

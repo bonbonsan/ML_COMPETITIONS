@@ -49,30 +49,33 @@ You can also run the entire library inside a Docker container with GPU support (
    Edit the .env file to configure runtime behavior:  
    `USE_GPU=False     # Set to True when using GPU`  
    `PYTHONPATH=.      # Required for resolving my_library imports`  
-   ⚠️ .env is excluded from Git and Docker build (.gitignore, .dockerignore) and should not be committed.
+   ⚠️ `.env` is excluded from Git and Docker build (.gitignore, .dockerignore) and should not be committed.
 
 2. Build the Docker image  
    `docker build -t ml-gpu .`
 
 3. Run the container (with GPU support if available)  
-   `docker run --env-file .env -it -v $PWD:/workspace ml-gpu`
-   - --env-file .env: Injects environment variables into the container
-   - -v $PWD:/workspace: Mounts the project into /workspace inside the container
-   - -it: Runs interactively with terminal access
-   If using GPU (e.g., on Paperspace), you may also add:
-   `--gpus all`
-   to enable GPU access.
+   `docker run --env-file .env -p 8888:8888 -v $PWD:/workspace -it ml-gpu`  
+   If using GPU (e.g., on Paperspace), you may also add: `--gpus all` to enable GPU access. For example:  
+   `docker run --gpus all --env-file .env -p 8888:8888 -v $PWD:/workspace -it ml-gpu`
+  
+   - --env-file .env: Injects environment variables into the container  
+   - -v $PWD:/workspace: Mounts the project into /workspace inside the container  
+   - -it: Runs interactively with terminal access  
 
 4. Inside the container, You can run training or testing as usual:  
-   `pytest my_library/tests/unit/`
-   `python projects/train.py`
-   To check environment variables:
-   `echo $USE_GPU`
-   `echo $PYTHONPATH`
+   `pytest my_library/tests/unit/`  
+   `python projects/train.py`  
+   To check environment variables:  
+   `echo $USE_GPU`  
+   `echo $PYTHONPATH`  
 
-5. Exiting the container  
-   Simply type:
-`   exit`
+5. To run jupyter notebook:
+   `jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root`  
+   Access to `http://localhost:8888/lab`
+
+6. Exiting the container  
+   Simply type: `exit`
 
 ## Notes
 

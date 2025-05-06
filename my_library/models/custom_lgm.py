@@ -41,6 +41,7 @@ class CustomLightGBM(CustomModelInterface, BaseEstimator):
 
         self.model = None
         self.used_features = None
+        self._early_stopping_rounds = None
 
         self.target_name: str = "target"
 
@@ -49,7 +50,7 @@ class CustomLightGBM(CustomModelInterface, BaseEstimator):
         self.logger.info("Building the model.")
         params = self.params.copy()
         if self.use_gpu:
-            params.update({"device": "gpu"})
+            params.update({"device_type": "gpu"})
 
         if self.task_type == "classification":
             self.model = lgb.LGBMClassifier(**params)

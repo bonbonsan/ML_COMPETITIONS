@@ -10,6 +10,7 @@ from sklearn.inspection import permutation_importance
 from my_library.configs.model_configs.fit_configs import FitConfig
 from my_library.configs.model_configs.tabn_configs import TabNetConfig
 from my_library.models.interface import CustomModelInterface
+from my_library.utils.env_loader import get_device
 from my_library.utils.logger import Logger
 
 
@@ -36,7 +37,7 @@ class CustomTabNetModel(CustomModelInterface, BaseEstimator):
         self.use_gpu = config.use_gpu
         self.save_log = config.save_log
         
-        self.device = "cuda" if self.use_gpu and torch.cuda.is_available() else "cpu"
+        self.device = get_device()
         self.logger = Logger(self.__class__.__name__, save_to_file=self.save_log).get_logger()
         self.logger.info(f"Initialized {self.__class__.__name__} on device={self.device}.")
 
