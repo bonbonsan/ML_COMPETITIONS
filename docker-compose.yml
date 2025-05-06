@@ -1,0 +1,25 @@
+version: '3.9'
+
+services:
+  ml-gpu:
+    image: ml-gpu
+    container_name: ml-gpu-container
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - .:/workspace
+    working_dir: /workspace
+    env_file:
+      - .env.example  # .envは.gitignoreしても.exampleで代用可能
+    tty: true
+    stdin_open: true
+    shm_size: '8gb'
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    runtime: nvidia

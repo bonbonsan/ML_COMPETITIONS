@@ -9,14 +9,18 @@ It is designed for competitive data science tasks (e.g., Kaggle) and provides a 
 - `my_library/` – Core machine learning library  
   - `configs/` – Configuration classes for each algorithm using dataclasses  
   - `data/` – Sample datasets collected from public sources  
+    - `samples/` – Public sample datasets (included in Git and Docker)  
+    - Other folders – Private or competition datasets (excluded from Git, but shared with Docker)  
   - `ensembles/` – Classes for combining predictions (ensembling)  
   - `feature_engineerings/` – Functions for feature engineering  
   - `logs/` – Output destination for log files  
   - `models/` – ML models with a unified interface  
+  - `putput/` – ML models with a unified interface  
   - `parameter_tunings/` – Classes for hyperparameter tuning  
   - `splitters/` – Classes for splitting datasets  
-  - `tests/e2e/` – Example scripts demonstrating module usage  
-  - `tests/unit/` – Unit test modules using pytest  
+  - `tests/`  
+    - `e2e/`Example scripts demonstrating module usage  
+    - `unit/` – Unit test modules using pytest  
   - `utils/` – Utility functions  
   - `validations/` – Wrapper classes for training and prediction
 - `requirements.ixt`

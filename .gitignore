@@ -16,8 +16,11 @@ catboost_info/
 *.csv
 *.parquet
 *.json
+*.xlsx
+my_library.data/*
 !my_library/data/samples/**/*.csv
 !my_library/data/samples/*.csv
+my_library.output/*
 
 # Docker
 build.log

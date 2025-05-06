@@ -16,8 +16,9 @@ catboost_info/
 *.csv
 *.parquet
 *.json
-!my_library/data/samples/**/*.csv
-!my_library/data/samples/*.csv
+*.xlsx
+!my_library/data/**    # 同期させる
+!my_library/output/**  # 同期させる
 
 # Docker
 build.log
