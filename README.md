@@ -50,9 +50,14 @@ You can also run the entire library inside a Docker container with GPU support (
 
 1. Create a .env file from the template  
    `cp .env.example .env`  
-   Edit the .env file to configure runtime behavior:  
-   `USE_GPU=False     # Set to True when using GPU`  
+   Edit the .env file to configure runtime behavior: 
    `PYTHONPATH=.      # Required for resolving my_library imports`  
+   `NVIDIA_VISIBLE_DEVICES=all  # Specify GPU IDs to use; set to 'all' to enable all available GPUs`  
+   `USE_GPU=False               # Set to True to use GPU, or False to use CPU`  
+   `LOG_LEVEL=INFO              # Logging level: DEBUG, INFO, WARNING, ERROR, etc.`  
+   `SAVE_LOG_TO_FILE=False      # If True, log output will also be saved to a file`  
+   `ENABLE_TIMEIT=True          # If True, enables execution time measurement with timeit decorator`  
+
    ⚠️ `.env` is excluded from Git and Docker build (.gitignore, .dockerignore) and should not be committed.
 
 2. Build the Docker image  
