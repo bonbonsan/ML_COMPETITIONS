@@ -15,7 +15,7 @@ It is designed for competitive data science tasks (e.g., Kaggle) and provides a 
   - `feature_engineerings/` – Functions for feature engineering  
   - `logs/` – Output destination for log files  
   - `models/` – ML models with a unified interface  
-  - `putput/` – ML models with a unified interface  
+  - `output/` – ML models with a unified interface  
   - `parameter_tunings/` – Classes for hyperparameter tuning  
   - `splitters/` – Classes for splitting datasets  
   - `tests/`  
@@ -44,53 +44,79 @@ It is designed for competitive data science tasks (e.g., Kaggle) and provides a 
 
 `pytest my_library/tests/unit/`
 
-## Running in Docker (GPU-accelerated training)
+## Running in Docker (GPU-accelerated training via Paperspace)
 
-You can also run the entire library inside a Docker container with GPU support (e.g., on Paperspace or AWS).
+This project supports GPU-accelerated training inside Docker, with Paperspace CORE as the recommended environment.
 
-1. Create a .env file from the template  
-   `cp .env.example .env`  
-   Edit the .env file to configure runtime behavior:  
-   `PYTHONPATH=.      # Required for resolving my_library imports`  
-   `NVIDIA_VISIBLE_DEVICES=all  # Specify GPU IDs to use; set to 'all' to enable all available GPUs`  
-   `USE_GPU=False               # Set to True to use GPU, or False to use CPU`  
-   `LOG_LEVEL=INFO              # Logging level: DEBUG, INFO, WARNING, ERROR, etc.`  
-   `SAVE_LOG_TO_FILE=False      # If True, log output will also be saved to a file`  
-   `ENABLE_TIMEIT=True          # If True, enables execution time measurement with timeit decorator`  
+### ❗ Prerequisite
 
-   ⚠️ `.env` is excluded from Git and Docker build (.gitignore, .dockerignore) and should not be committed.
+Before starting, set your PAPERSPACE_PUBLIC_IP in a dedicated environment file:  
+ `echo 'PAPERSPACE_PUBLIC_IP=184.105.4.230' > .paperspace.env`  
+ This allows IP sharing across scripts.
 
-2. Build the Docker image  
-   `docker build -t ml-gpu .`
+## Shell Script Automation (GPU Setup & Training)
 
-3. Run the container (with GPU support if available)  
-   `docker run --env-file .env -p 8888:8888 -v $PWD:/workspace -it ml-gpu`  
-   If using GPU (e.g., on Paperspace), you may also add: `--gpus all` to enable GPU access. For example:  
-   `docker run --gpus all --env-file .env -p 8888:8888 -v $PWD:/workspace -it ml-gpu`
-  
-   - --env-file .env: Injects environment variables into the container  
-   - -v $PWD:/workspace: Mounts the project into /workspace inside the container  
-   - -it: Runs interactively with terminal access  
+The following helper scripts are provided for GPU workflows using Paperspace:
 
-4. Inside the container, You can run training or testing as usual:  
-   `pytest my_library/tests/unit/`  
-   `python projects/train.py`  
-   To check environment variables:  
-   `echo $USE_GPU`  
-   `echo $PYTHONPATH`  
+### 🔧 1. gpu_setup_and_build.sh
 
-5. To run Jupyter Notebook:  
-   Inside the container, a helper script is pre-installed to simplify starting Jupyter Lab.  
-   Simply run: `run_jupyter-lab.sh`
+Run once on a new Paperspace machine to install drivers and build Docker:  
+`./gpu_setup_and_build.sh`
 
-6. Exiting the container  
-   Simply type: `exit`
+### 🔁 2. gpu_pull_and_rebuild.sh
+
+Use when you’ve updated Dockerfile or requirements:  
+`./gpu_pull_and_rebuild.sh`
+
+### 🚀 3. docker-run_with_port.sh
+
+Start container and run latest code with GPU:  
+`./docker-run_with_port.sh`
+
+### 🌐 4. start_paperspace.sh
+
+On your Mac, launch SSH tunnel for Jupyter access:  
+`./start_paperspace.sh`  
+Make sure `PAPERSPACE_PUBLIC_IP` is set inside the script or in `.paperspace.env`.
+
+### 📓 5. run_jupyter-lab.sh
+
+Run inside the Docker container to launch JupyterLab:  
+`./run_jupyter-lab.sh`  
+Access it at: [http://localhost:8888/lab](http://localhost:8888/lab)
+
+## Data Sync Scripts
+
+Use the following scripts to transfer training data and results:
+
+### ⬆️ 6. push_data_to_container.sh
+
+From Mac → Paperspace:  
+`./push_data_to_container.sh`
+
+### ⬇️ 7. pull_data_from_container.sh
+
+From Paperspace → Mac:  
+`./pull_data_from_container.sh`
+
+## Environment Configuration (.env)
+
+To control GPU/CPU usage and logging, edit `.env` (copied from `.env.example` ):
+
+`PYTHONPATH=.`  
+`NVIDIA_VISIBLE_DEVICES=all`  
+`USE_GPU=True`  
+`LOG_LEVEL=INFO`  
+`SAVE_LOG_TO_FILE=False`  
+`ENABLE_TIMEIT=True`
+
+  ⚠️ `.env` and `.paperspace.env` are excluded from Git tracking.
 
 ## Notes
 
 - `documents/` contains external learning resources such as cheat sheets and slides.
-- The modules under `my_library/` are organized to cover all stages of a machine learning workflow.
-- Sample codes are placed in `my_library/tests/e2e/`, while unit tests are in `my_library/tests/unit/`.
+- `my_library/` contains reusable, modular ML components.
+- Unit tests are under `my_library/tests/unit/`, and example pipelines are under `e2e/`.
 
 ## License
 

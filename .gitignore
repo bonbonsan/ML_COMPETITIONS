@@ -1,5 +1,6 @@
 # Environment and cache
-*.env
+.env
+.paperspace.env
 .venv/
 kaggle-venv/
 *.egg-info/
