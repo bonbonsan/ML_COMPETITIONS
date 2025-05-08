@@ -50,8 +50,8 @@ This project supports GPU-accelerated training inside Docker, with Paperspace CO
 
 ### ❗ Prerequisite
 
-Before starting, set your PAPERSPACE_PUBLIC_IP in a dedicated environment file:  
- `echo 'PAPERSPACE_PUBLIC_IP=184.105.4.230' > .paperspace.env`  
+Before starting, set your `PAPERSPACE_PUBLIC_IP` in a dedicated environment file:  
+ `echo 'PAPERSPACE_PUBLIC_IP=xxx.xxx.x.xxx' > .paperspace.env`  
  This allows IP sharing across scripts.
 
 ## Shell Script Automation (GPU Setup & Training)
