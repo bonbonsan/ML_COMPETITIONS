@@ -50,7 +50,7 @@ You can also run the entire library inside a Docker container with GPU support (
 
 1. Create a .env file from the template  
    `cp .env.example .env`  
-   Edit the .env file to configure runtime behavior: 
+   Edit the .env file to configure runtime behavior:  
    `PYTHONPATH=.      # Required for resolving my_library imports`  
    `NVIDIA_VISIBLE_DEVICES=all  # Specify GPU IDs to use; set to 'all' to enable all available GPUs`  
    `USE_GPU=False               # Set to True to use GPU, or False to use CPU`  
@@ -81,7 +81,7 @@ You can also run the entire library inside a Docker container with GPU support (
 
 5. To run Jupyter Notebook:  
    Inside the container, a helper script is pre-installed to simplify starting Jupyter Lab.  
-   Simply run: `jupyter-lab.sh`
+   Simply run: `run_jupyter-lab.sh`
 
 6. Exiting the container  
    Simply type: `exit`
