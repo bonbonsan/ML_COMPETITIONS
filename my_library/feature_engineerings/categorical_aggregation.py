@@ -1,7 +1,9 @@
+from itertools import product
+from typing import Callable, Dict, List, Union
+
 import pandas as pd
 import polars as pl
-from itertools import product
-from typing import Union, List, Callable, Dict, Literal
+
 from my_library.utils.df_utils import df_io_polars, get_unique_values
 
 
@@ -21,7 +23,8 @@ def aggregate_by_category_combinations(
         group_cols (List[str]): List of categorical column names to group by.
         agg_func_map (Dict[str, Callable]): Dict mapping function names to aggregation functions.
                                             Example: {"mean": pl.col("target").mean()}
-        default_value (float): Value to fill for missing category combinations. Defaults to -10000.0.
+        default_value (float): Value to fill for missing category combinations.
+                               Defaults to -10000.0.
 
     Returns:
         pl.DataFrame: Aggregated statistics per category combination.
@@ -35,7 +38,7 @@ def aggregate_by_category_combinations(
 
     if non_cat_cols:
         msgs = [f"{col}: {dtype}" for col, dtype in non_cat_cols]
-        raise ValueError(f"The following columns are not categorical:\n" + "\n".join(msgs))
+        raise ValueError("The following columns are not categorical:\n" + "\n".join(msgs))
 
     # ---- Generate unique value combinations ----
     unique_lists = [get_unique_values(df, col) for col in group_cols]

@@ -5,6 +5,7 @@ from my_library.configs.model_configs.base_configs import ConfigBase
 from my_library.utils.env_loader import use_gpu_enabled
 
 
+# TODO: Good initial values.
 @dataclass
 class LightGBMConfig(ConfigBase):
     """Configuration class for LightGBM models.

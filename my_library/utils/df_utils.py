@@ -1,16 +1,22 @@
 from functools import wraps
-from typing import Callable, List, Literal, Union, TypeVar, cast
+from typing import Any, Callable, List, Literal, TypeVar, Union, cast
+
 import pandas as pd
 import polars as pl
 
 ReturnTypeLiteral = Literal["pandas", "polars"]
 
-# 任意の関数型を受け取るためのジェネリック
+# Generic type for the decorator
+# This allows us to specify that the decorator can be used on any function
+# that takes any number of arguments and returns a DataFrame
 F = TypeVar("F", bound=Callable[..., pl.DataFrame])
 
+DataFrameType = Union[pd.DataFrame, pl.DataFrame]
+
+
 def df_io_polars(
-        return_type: ReturnTypeLiteral = "pandas"
-        ) -> Callable[[F], Callable[..., Union[pd.DataFrame, pl.DataFrame]]]:
+        return_type: ReturnTypeLiteral = "polars"
+        ) -> Callable[[F], Callable[..., DataFrameType]]:
     """
     Decorator for feature engineering functions that operate using Polars internally,
     while allowing flexible input/output in either pandas or polars DataFrame format.
@@ -57,12 +63,12 @@ def df_io_polars(
                     f"[df_io_polars] return_type must be 'pandas' or 'polars', got '{return_type}'"
                     )
 
-        return cast(Callable[..., Union[pd.DataFrame, pl.DataFrame]], wrapper)
+        return cast(Callable[..., DataFrameType], wrapper)
 
     return decorator
 
 
-def to_polars(df: Union[pd.DataFrame, pl.DataFrame]) -> pl.DataFrame:
+def to_polars(df: DataFrameType) -> pl.DataFrame:
     """
     Converts a pandas or polars DataFrame to polars.DataFrame.
     """
@@ -74,7 +80,7 @@ def to_polars(df: Union[pd.DataFrame, pl.DataFrame]) -> pl.DataFrame:
         raise TypeError(f"Expected pd.DataFrame or pl.DataFrame, got {type(df)}")
 
 
-def to_pandas(df: Union[pd.DataFrame, pl.DataFrame]) -> pd.DataFrame:
+def to_pandas(df: DataFrameType) -> pd.DataFrame:
     """
     Converts a pandas or polars DataFrame to pandas.DataFrame.
     """
@@ -87,7 +93,7 @@ def to_pandas(df: Union[pd.DataFrame, pl.DataFrame]) -> pd.DataFrame:
 
 
 def get_common_columns(
-        df1: Union[pd.DataFrame, pl.DataFrame], df2: Union[pd.DataFrame, pl.DataFrame]
+        df1: DataFrameType, df2: DataFrameType
         ) -> List[str]:
     """
     Returns the list of column names that are common to both DataFrames.
@@ -96,12 +102,6 @@ def get_common_columns(
     cols2 = set(to_pandas(df2).columns)
     return sorted(list(cols1 & cols2))
 
-
-from typing import Union, Any, List
-import pandas as pd
-import polars as pl
-
-DataFrameType = Union[pd.DataFrame, pl.DataFrame]
 
 def get_unique_values(df: DataFrameType, column: str) -> List[Any]:
     """

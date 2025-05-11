@@ -4,6 +4,7 @@ from typing import Dict, Literal
 from my_library.configs.model_configs.base_configs import ConfigBase
 
 
+# TODO: Good initial values.
 @dataclass
 class HistGBDTConfig(ConfigBase):
     """Configuration class for sklearn's HistGradientBoosting models.

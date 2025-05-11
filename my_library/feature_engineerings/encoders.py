@@ -1,8 +1,9 @@
-from abc import ABC, abstractmethod
-from typing import Any, Dict, Optional
-import pandas as pd
-import pickle
 import os
+import pickle
+from abc import ABC, abstractmethod
+from typing import Any, Dict
+
+import pandas as pd
 
 
 class BaseEncoder(ABC):

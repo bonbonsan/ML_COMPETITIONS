@@ -306,7 +306,9 @@ class ValidationRunner:
         # In such cases, retrain proceeds without limiting iteration count.
         best_iters = [r for r in self.results.get("fold_best_iterations", []) if r is not None]
         if not best_iters:
-            logger.warning("No best_iteration_ available; skipping retrain with limited iterations.")
+            logger.warning(
+                "No best_iteration_ available; skipping retrain with limited iterations."
+                )
             max_iter = None
         else:
             max_iter = int(np.ceil(max(best_iters) * TEST_ROUND_MULTIPLIER))
