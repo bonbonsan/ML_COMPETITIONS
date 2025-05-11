@@ -85,10 +85,32 @@ class CustomHistGBDT(CustomModelInterface, BaseEstimator):
         else:
             self.used_features = X.columns.tolist()
             X_train = X
+        
+        # Convert FitConfig.epochs to max_iter (HistGBDT terminology)
+        # -------------------------------------------------------------
+        # Note:
+        # - scikit-learn's HistGradientBoostingClassifier/Regressor use "max_iter".
+        # - We use FitConfig.epochs to maintain API parity across models.
+        if fit_config.epochs is not None:
+            self.params["max_iter"] = fit_config.epochs
 
         # build and fit model
         self.build_model()
         self.model.fit(X_train, y)
+
+        # Set best_iteration_: use actual n_iter_ if available, else fall back to max_iter param
+        if hasattr(self.model, "n_iter_"):
+            self._best_iteration = self.model.n_iter_
+            self.logger.info(f"Effective iteration count (n_iter_): {self._best_iteration}")
+        else:
+            self._best_iteration = self.params.get("max_iter", None)
+            if self._best_iteration is not None:
+                self.logger.info(
+                    f"No n_iter_ found. Falling back to max_iter: {self._best_iteration}"
+                    )
+            else:
+                self.logger.info("No best_iteration found (neither n_iter_ nor max_iter).")
+
         self.logger.info("HistGBDT training completed.")
 
         # Save training data for permutation importance

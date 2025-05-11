@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from typing import Optional
 
 import pandas as pd
 
@@ -103,6 +104,28 @@ class CustomModelInterface(ABC):
             path (str): File path from which the model should be loaded.
         """
         pass
+
+    @property
+    def best_iteration_(self) -> Optional[int]:
+        """
+        Best iteration number after training (if applicable).
+
+        This property holds the best number of training iterations (or epochs)
+        selected during model training, typically via early stopping.
+
+        Note:
+            - This is only relevant for models that support iterative training,
+              such as gradient boosting frameworks (e.g., LightGBM, XGBoost) or
+              deep learning models with epoch-based training.
+            - For models like linear regression or tree-based models without iterative
+              control, this will always return None.
+            - During validation (e.g., cross-validation), this property may be overwritten
+              after each fold's training to reflect the fold-specific best iteration.
+
+        Returns:
+            Optional[int]: The best iteration number, or None if not applicable.
+        """
+        return getattr(self, "_best_iteration", None)
 
     def get_params(self) -> dict:
         """Return model parameters.

@@ -16,6 +16,8 @@ from my_library.validations.validator import Validator
 
 logger = Logger(__name__, save_to_file=False).get_logger()
 
+TEST_ROUND_MULTIPLIER = 1.2
+
 
 class ValidationRunner:
     """
@@ -96,6 +98,7 @@ class ValidationRunner:
               - fold_models: Trained model objects per fold.
               - fold_params: Model.get_params() per fold.
               - fold_predictions: Predictions (or probas) per fold as pd.Series.
+              - fold_best_iterations: List of best_iteration_ values per fold.
               - metric_fn: Name of metric function used.
               - task_type: classification or regression.
         """
@@ -179,20 +182,27 @@ class ValidationRunner:
             fit_config (FitConfig): Configuration for model training.
 
         Returns:
-            Tuple:
-                - scores (List[float]): List of scores for each fold.
-                - preds (List[pd.Series]): List of predictions for each fold.
-                - models (List[CustomModelInterface]): Trained models for each fold.
-                - params (List[dict]): List of model parameters for each fold.
+            Dict:
+                - fold_scores: List of fold scores.
+                - mean_score: Mean score.
+                - std_score: Standard deviation of scores.
+                - fold_models: Trained model instances.
+                - fold_params: Model parameters for each fold.
+                - fold_predictions: List of per-fold predictions.
+                - fold_best_iterations: List of best_iteration_ values per fold.
+                - metric_fn: Metric name.
+                - task_type: Task type.
         """
-        scores, preds, models, params = [], [], [], []
+        scores, preds, models, params, best_rounds = [], [], [], [], []
         for i, ((X_tr, y_tr), (X_val, y_val)) in enumerate(folds):
             score, pred, model, param = self._run_fold(i, X_tr, y_tr, X_val, y_val, fit_config)
             scores.append(score)
             preds.append(pred)
             models.append(model)
             params.append(param)
-        return self._build_result(scores, preds, models, params)
+            best_round = getattr(model, "best_iteration_", None)
+            best_rounds.append(best_round)
+        return self._build_result(scores, preds, models, params, best_rounds)
 
     def _run_folds_parallel(self, folds, fit_config):
         """
@@ -204,12 +214,17 @@ class ValidationRunner:
             fit_config (FitConfig): Configuration for model training.
 
         Returns:
-            Tuple:
-                - scores (List[float]): List of scores for each fold.
-                - preds (List[pd.Series]): List of predictions for each fold.
-                - models (List[CustomModelInterface]): Trained models for each fold.
-                - params (List[dict]): List of model parameters for each fold.
-        """
+            Dict:
+                - fold_scores: List of fold scores.
+                - mean_score: Mean score.
+                - std_score: Standard deviation of scores.
+                - fold_models: Trained model instances.
+                - fold_params: Model parameters for each fold.
+                - fold_predictions: List of per-fold predictions.
+                - fold_best_iterations: List of best_iteration_ values per fold.
+                - metric_fn: Metric name.
+                - task_type: Task type.
+        """ 
         with ThreadPoolExecutor() as executor:
             futures = [
                 executor.submit(self._run_fold, i, X_tr, y_tr, X_val, y_val, fit_config)
@@ -218,14 +233,33 @@ class ValidationRunner:
             results = [f.result() for f in futures]
 
         scores, preds, models, params = zip(*results, strict=False)
-        return self._build_result(list(scores), list(preds), list(models), list(params))
+        best_rounds = [getattr(m, "best_iteration_", None) for m in models]
+        return self._build_result(
+            list(scores), list(preds), list(models), list(params), best_rounds
+            )
     
-    def _build_result(self, scores, preds, models, params):
+    def _build_result(self, scores, preds, models, params, best_rounds):
         """
         Build the final results dictionary.
 
+        Args:
+            scores: List of validation scores per fold.
+            preds: List of predictions per fold.
+            models: List of trained models per fold.
+            params: List of model parameter dicts per fold.
+            best_rounds: List of best_iteration_ values per fold.
+
         Returns:
-            Dict: Dictionary containing scores, predictions, models, etc.
+            Dict containing:
+                - fold_scores: List of fold scores.
+                - mean_score: Mean score.
+                - std_score: Standard deviation of scores.
+                - fold_models: List of trained models.
+                - fold_params: List of parameter dictionaries.
+                - fold_predictions: List of per-fold predictions.
+                - fold_best_iterations: List of best_iteration_ values.
+                - metric_fn: Metric name.
+                - task_type: Task type.
         """
         task_type = self.model_configs.task_type
         mean_score, std_score = float(np.mean(scores)), float(np.std(scores))
@@ -238,11 +272,62 @@ class ValidationRunner:
             "fold_models": models,
             "fold_params": params,
             "fold_predictions": preds,
+            "fold_best_iterations": best_rounds,
             "metric_fn": self.metric_fn.__name__ if self.metric_fn else (
                 "accuracy_score" if task_type == "classification" else "rmse"
             ),
             "task_type": task_type
         }
+    
+    def retrain(
+        self, X: pd.DataFrame, y: pd.Series, fit_config: FitConfig
+        ) -> CustomModelInterface:
+        """
+        Retrain a model on the provided dataset using best_iteration from CV.
+
+        This is intended for final training before test prediction,
+        using the optimal number of iterations found during cross-validation.
+
+         Args:
+            X (pd.DataFrame): Training features (e.g. full train set).
+            y (pd.Series): Training targets.
+            fit_config (FitConfig): Configuration for retraining:
+                - feats: list of features
+                - batch_size / epochs: optionally overridden
+
+        Returns:
+            CustomModelInterface: Retrained model ready for test prediction.
+        """
+        if not self.results or "fold_best_iterations" not in self.results:
+            raise RuntimeError("Must call run() before retrain().")
+
+        # For models like GBDT or deep learning, best_iteration_ is available.
+        # For others like Linear/SVM/KNN/RandomForest, best_iteration_ is not defined.
+        # In such cases, retrain proceeds without limiting iteration count.
+        best_iters = [r for r in self.results.get("fold_best_iterations", []) if r is not None]
+        if not best_iters:
+            logger.warning("No best_iteration_ available; skipping retrain with limited iterations.")
+            max_iter = None
+        else:
+            max_iter = int(np.ceil(max(best_iters) * TEST_ROUND_MULTIPLIER))
+
+        logger.info(
+            f"Retraining with max_iter={max_iter} \
+                (max CV best_iteration * {TEST_ROUND_MULTIPLIER})"
+                )
+
+        # prepare new config
+        retrain_config = FitConfig(
+            feats=fit_config.feats,
+            eval_set=None,  # no validation
+            early_stopping_rounds=None,  # no early stopping
+            epochs=max_iter,  # override epochs
+            batch_size=fit_config.batch_size
+        )
+
+        model = self.model_class(self.model_configs)
+        Validator(model).train(X, y, fit_config=retrain_config)
+        return model
 
     def run_predict_on_test(
         self,

@@ -158,6 +158,12 @@ class CustomRNNModel(CustomModelInterface):
             avg = total_loss / len(loader)
             self.logger.info(f"[Epoch {epoch+1}/{epochs}] Loss: {avg:.6f}")
 
+        # Save best_iteration as number of epochs
+        self._best_iteration = epochs
+        self.logger.info(f"Set best_iteration (total epochs): {self._best_iteration}")
+
+        self.logger.info("RNN training completed.")
+
     def predict(self, X: pd.DataFrame) -> pd.Series:
         """Generate predictions.
 

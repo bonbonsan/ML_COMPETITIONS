@@ -141,6 +141,15 @@ class CustomTabNetModel(CustomModelInterface, BaseEstimator):
             virtual_batch_size=virtual_batch_size,
             drop_last=False
         )
+
+        # Save best_iteration from TabNet's best_epoch
+        if hasattr(self.model, "best_epoch"):
+            self._best_iteration = self.model.best_epoch + 1  # 0-based indexなので +1
+            self.logger.info(f"Best iteration (early stopped): {self._best_iteration}")
+        else:
+            self._best_iteration = None
+            self.logger.info("No best_iteration found (e.g., no early stopping used).")
+
         self.logger.info("TabNet training completed.")
 
     def predict(self, X: pd.DataFrame) -> pd.Series:

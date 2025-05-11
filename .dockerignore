@@ -28,7 +28,6 @@ build.log
 
 # OS & editor files
 .DS_Store
-.vscode/
 
 # Projects & Outputs
 logs/*

@@ -83,6 +83,14 @@ class CustomCatBoost(CustomModelInterface, BaseEstimator):
             X_train = X
             eval_set = fit_config.eval_set
 
+        # Convert FitConfig.epochs to iterations (CatBoost terminology)
+        # -------------------------------------------------------------
+        # Note:
+        # - CatBoost uses "iterations" to specify the number of boosting steps.
+        # - Mapping FitConfig.epochs -> iterations preserves API consistency.
+        if fit_config.epochs is not None:
+            self.params["iterations"] = fit_config.epochs
+
         # build underlying model
         self.build_model()
 
@@ -100,6 +108,14 @@ class CustomCatBoost(CustomModelInterface, BaseEstimator):
             early_stopping_rounds=fit_config.early_stopping_rounds,
             verbose=False,
         )
+
+        if hasattr(self.model, "get_best_iteration"):
+            self._best_iteration = self.model.get_best_iteration()
+            self.logger.info(f"Best iteration (early stopped): {self._best_iteration}")
+        else:
+            self._best_iteration = None
+            self.logger.info("No best_iteration found (e.g., no early stopping used).")
+
         self.logger.info("CatBoost training completed.")
     
     def predict(self, X: pd.DataFrame) -> pd.Series:

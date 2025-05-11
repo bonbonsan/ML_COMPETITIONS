@@ -49,7 +49,7 @@ def runner_and_data(request):
 
 
 def test_basic_run_and_predict(runner_and_data):
-    task_type, X, y, folds, fit_config, runner = runner_and_data
+    task_type, X, _, folds, fit_config, runner = runner_and_data
     results = runner.run(folds, fit_config)
     # Basic structure
     assert isinstance(results, dict)
@@ -59,6 +59,23 @@ def test_basic_run_and_predict(runner_and_data):
     trained_model = results["fold_models"][0]
     X_test = X.sample(n=5, random_state=1)
     preds = runner.run_predict_on_test(trained_model, X_test)
+    assert len(preds) == 5
+    assert isinstance(preds, (np.ndarray, pd.Series))
+
+
+def test_retrain_model_and_predict(runner_and_data):
+    task_type, X, y, folds, fit_config, runner = runner_and_data
+
+    # 初回学習（CV）
+    runner.run(folds, fit_config)
+
+    # retrainによって全データで再学習
+    retrained_model = runner.retrain(X, y, fit_config)
+
+    # テスト用に予測して確認
+    X_test = X.sample(n=5, random_state=2)
+    preds = runner.run_predict_on_test(retrained_model, X_test)
+
     assert len(preds) == 5
     assert isinstance(preds, (np.ndarray, pd.Series))
 

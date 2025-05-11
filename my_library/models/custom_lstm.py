@@ -157,6 +157,11 @@ class CustomLSTMModel(CustomModelInterface):
                 total_loss += loss.item()
             avg_loss = total_loss / len(loader)
             self.logger.info(f"[Epoch {epoch+1}/{epochs}] Loss: {avg_loss:.6f}")
+        
+        self._best_iteration = epochs
+        self.logger.info(f"Set best_iteration (total epochs): {self._best_iteration}")
+
+        self.logger.info("LSTM training completed.")
 
     def predict(self, X: pd.DataFrame) -> pd.Series:
         """Generate predictions.

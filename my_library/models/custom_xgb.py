@@ -105,6 +105,15 @@ class CustomXGBoost(CustomModelInterface, BaseEstimator):
         else:
             self._early_stopping_rounds = None
 
+        # Convert FitConfig.epochs to n_estimators (XGBoost terminology)
+        # -------------------------------------------------------------
+        # Note:
+        # - XGBoost uses "n_estimators" to denote the number of boosting rounds (trees).
+        # - We use FitConfig.epochs as the abstracted, model-agnostic term.
+        # - This ensures that DL and GBDT models share a common FitConfig interface.
+        if fit_config.epochs is not None:
+            self.params["n_estimators"] = fit_config.epochs
+
         # build model with updated params
         self.build_model()
 
@@ -115,6 +124,14 @@ class CustomXGBoost(CustomModelInterface, BaseEstimator):
             eval_set=eval_set,
             verbose=False
         )
+
+        if hasattr(self.model, "best_iteration"):
+            self._best_iteration = self.model.best_iteration
+            self.logger.info(f"Best iteration (early stopped): {self._best_iteration}")
+        else:
+            self._best_iteration = None
+            self.logger.info("No best_iteration found (e.g., no early stopping used).")
+
         self.logger.info("XGBoost training completed.")
     
     def predict(self, X: pd.DataFrame) -> pd.Series:

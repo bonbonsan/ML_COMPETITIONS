@@ -45,6 +45,9 @@ class CustomLightGBM(CustomModelInterface, BaseEstimator):
 
         self.target_name: str = "target"
 
+        # Segmentation fault issue workaround
+        self.params["n_jobs"] = 1
+
     def build_model(self):
         """Build the LightGBM model based on task type and parameters."""
         self.logger.info("Building the model.")
@@ -92,6 +95,16 @@ class CustomLightGBM(CustomModelInterface, BaseEstimator):
             self.used_features = X.columns.tolist()
             X_train = X
             eval_set = fit_config.eval_set
+        
+        # Convert FitConfig.epochs to n_estimators for LightGBM
+        # ------------------------------------------------------
+        # Note:
+        # - In GBDT models like LightGBM, "epochs" from FitConfig refers to
+        #   the number of boosting rounds (trees), not full dataset passes.
+        # - LightGBM uses "n_estimators" to control this value.
+        # - This translation ensures API consistency across model types (DL vs GBDT).
+        if fit_config.epochs is not None:
+            self.params["n_estimators"] = int(fit_config.epochs)
 
         # build model
         self.build_model()
@@ -108,6 +121,13 @@ class CustomLightGBM(CustomModelInterface, BaseEstimator):
             eval_set=eval_set,
             callbacks=callbacks or None,
         )
+        if hasattr(self.model, "booster_") and hasattr(self.model.booster_, "best_iteration"):
+            self._best_iteration = self.model.booster_.best_iteration
+            self.logger.info(f"Best iteration (early stopped): {self._best_iteration}")
+        else:
+            self._best_iteration = None
+            self.logger.info("No best_iteration found (e.g., no early stopping used).")
+
         self.logger.info("LightGBM training completed.")
 
     def predict(self, X: pd.DataFrame) -> pd.Series:

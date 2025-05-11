@@ -131,6 +131,12 @@ def run_classification_cv():
         )
     print("Exported CV reports for classification to", OUTPUT_DIR)
 
+    # Retrain on all training data using best iteration * TEST_ROUND_MULTIPLIER
+    print("\n--- Retraining on full data for classification ---")
+    retrained_model = runner.retrain(X, y, fit_config=fit_config)
+    preds_retrain = runner.run_predict_on_test(retrained_model, X_val0)
+    print("Retrained model predictions head:\n", preds_retrain[:5])
+
 
 def run_regression_cv():
     """
@@ -234,6 +240,13 @@ def run_regression_cv():
     runner.export_cv_report(os.path.join(OUTPUT_DIR, "cv_report_regression.csv"), as_excel=False)
     runner.export_cv_report(os.path.join(OUTPUT_DIR, "cv_report_regression.xlsx"), as_excel=True)
     print("Exported CV reports for regression to", OUTPUT_DIR)
+
+    # Retrain on all training data using best iteration * TEST_ROUND_MULTIPLIER
+    print("\n--- Retraining on full data for regression ---")
+    retrained_model = runner.retrain(X, y, fit_config=fit_config)
+    preds_retrain = runner.run_predict_on_test(retrained_model, X_val0)
+    print("Retrained model predictions head:\n", preds_retrain[:5])
+
 
 
 if __name__ == "__main__":
