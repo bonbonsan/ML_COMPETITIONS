@@ -1,17 +1,17 @@
+import datetime
 from functools import wraps
-from typing import Any, Callable, List, Literal, TypeVar, Union, cast
+from typing import Any, Callable, List, Literal, Optional, TypeVar, Union, cast
 
 import pandas as pd
 import polars as pl
 
+DataFrameType = Union[pd.DataFrame, pl.DataFrame]
 ReturnTypeLiteral = Literal["pandas", "polars"]
 
 # Generic type for the decorator
 # This allows us to specify that the decorator can be used on any function
 # that takes any number of arguments and returns a DataFrame
 F = TypeVar("F", bound=Callable[..., pl.DataFrame])
-
-DataFrameType = Union[pd.DataFrame, pl.DataFrame]
 
 
 def df_io_polars(
@@ -90,6 +90,128 @@ def to_pandas(df: DataFrameType) -> pd.DataFrame:
         return df
     else:
         raise TypeError(f"Expected pd.DataFrame or pl.DataFrame, got {type(df)}")
+
+
+@df_io_polars(return_type="polars")
+def filter_by_date_range(
+    df: pl.DataFrame,
+    date_col: str,
+    start_date: datetime,
+    end_date: datetime,
+    start_inclusive: bool = True,
+    end_inclusive: bool = True
+) -> pl.DataFrame:
+    """
+    Filters a DataFrame using a flexible date range on the specified column.
+
+    Args:
+        df (pl.DataFrame): Input DataFrame.
+        date_col (str): Column to filter.
+        start_date (datetime): Start of range.
+        end_date (datetime): End of range.
+        start_inclusive (bool): If True, start_date is inclusive (>=). Else, (>).
+        end_inclusive (bool): If True, end_date is inclusive (<=). Else, (<).
+
+    Returns:
+        pl.DataFrame: Filtered DataFrame.
+    """
+    if df.schema.get(date_col) not in [pl.Datetime, pl.Date]:
+        raise ValueError(f"[filter_by_date_range] '{date_col}' must be of type Date or Datetime.")
+
+    # Build dynamic conditions
+    start_cond = (
+        pl.col(date_col) >= pl.lit(start_date)
+        if start_inclusive else
+        pl.col(date_col) > pl.lit(start_date)
+    )
+
+    end_cond = (
+        pl.col(date_col) <= pl.lit(end_date)
+        if end_inclusive else
+        pl.col(date_col) < pl.lit(end_date)
+    )
+
+    return df.filter(start_cond & end_cond)
+
+
+@df_io_polars(return_type="polars")
+def rename_columns_with_tag(
+    df: pl.DataFrame,
+    cols: List[str],
+    tag: str
+) -> pl.DataFrame:
+    """
+    Rename specified columns in a Polars DataFrame by appending a tag.
+
+    Args:
+        df (pl.DataFrame): Input DataFrame.
+        cols (List[str]): List of column names to rename.
+        tag (str): Suffix tag to append.
+
+    Returns:
+        pl.DataFrame: DataFrame with renamed columns.
+    """
+    rename_map = {col: f"{col}_{tag}" for col in cols if col in df.columns}
+    return df.rename(rename_map)
+
+
+def memory_efficient_join(
+    left: pl.DataFrame,
+    right: pl.DataFrame,
+    on: Union[str, List[str]],
+    how: Literal["left", "inner", "outer", "semi", "anti"] = "left",
+    right_cols: Optional[List[str]] = None,
+    cast_categorical: bool = True
+) -> pl.DataFrame:
+    """
+    Efficiently joins two Polars DataFrames with memory-saving strategies.
+
+    This function is optimized for joining large datasets in Polars. It supports:
+    - selecting only necessary columns from the right table
+    - optionally casting join keys to categorical types for performance
+    - avoiding unnecessary memory consumption by handling join order and column filtering
+
+    Args:
+        left (pl.DataFrame): The left-hand side DataFrame (typically larger).
+        right (pl.DataFrame): The right-hand side DataFrame (typically smaller).
+        on (Union[str, List[str]]): Column(s) to join on.
+        how (str): Type of join. One of: 'left', 'inner', 'outer', 'semi', 'anti'.
+                   Default is 'left'.
+        right_cols (Optional[List[str]]): If specified, only these columns from `right` will be kept
+                                          (in addition to the join keys). Default is None (all).
+        cast_categorical (bool): Whether to cast join keys in both DataFrames to categorical.
+                                 Useful when joining on high-cardinality strings. Default is True.
+
+    Returns:
+        pl.DataFrame: The joined DataFrame.
+    
+    Raises:
+        ValueError: If provided join columns are not found in either DataFrame.
+    """
+    # Ensure join columns are list
+    if isinstance(on, str):
+        on = [on]
+
+    # Validate join columns
+    missing_left = [col for col in on if col not in left.columns]
+    missing_right = [col for col in on if col not in right.columns]
+    if missing_left or missing_right:
+        raise ValueError(f"Missing join keys - Left: {missing_left}, Right: {missing_right}")
+
+    # Optionally cast join keys to categorical
+    if cast_categorical:
+        for col in on:
+            if left.schema[col] == pl.Utf8:
+                left = left.with_columns(pl.col(col).cast(pl.Categorical))
+            if right.schema[col] == pl.Utf8:
+                right = right.with_columns(pl.col(col).cast(pl.Categorical))
+
+    # Reduce right table to necessary columns
+    if right_cols is not None:
+        right = right.select(list(set(on + right_cols)))
+
+    # Perform the join (Polars is optimized to bring right side in memory)
+    return left.join(right, on=on, how=how)
 
 
 def get_common_columns(
