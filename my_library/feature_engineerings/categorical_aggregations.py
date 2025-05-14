@@ -7,7 +7,8 @@ import polars as pl
 
 from my_library.utils.df_utils import DataFrameType, df_io_polars, get_unique_values
 
-df_io_polars(return_type="polars")
+
+@df_io_polars(return_type="polars")
 def aggregate_multi_category_long(
     df: DataFrameType,
     group_cols: List[str],
@@ -61,7 +62,7 @@ def aggregate_multi_category_long(
         expr_name = "_".join(group_cols) + f"_{func_name}"
         agg_exprs.append(func.alias(expr_name))
 
-    grouped_df = df.groupby(group_cols).agg(agg_exprs)
+    grouped_df = df.group_by(group_cols).agg(agg_exprs)
 
     # ---- Covering all combinations ----
     full_index_df = pl.DataFrame(
@@ -214,6 +215,7 @@ def custom_pivot_with_expr(
     result = reduce(lambda left, right: left.join(right, on=index_col, how="outer"), reshaped_dfs)
     return result.fill_null(default_value)
 
+
 @df_io_polars(return_type="polars")
 def compute_category_presence_flags(
     df: pl.DataFrame,
@@ -252,6 +254,93 @@ def compute_category_presence_flags(
     )
 
 
+@df_io_polars(return_type="polars")
+def flag_group_combination_existence(
+    df: pl.DataFrame,
+    group_keys: List[str],
+    value_col: str,
+    flag_col_name: str = None
+) -> pl.DataFrame:
+    """
+    Create binary flag column indicating whether each combination in group_keys
+    appears in df with value_col > 0.
+
+    Args:
+        df: Polars DataFrame
+        group_keys: List of column names to group by (e.g., ["gender", "age_group"])
+        value_col: Column to test for positive existence (e.g., "target")
+        flag_col_name: Optional name of the output flag column. If None,
+                       defaults to "{g1}_{g2}_flag".
+
+    Returns:
+        pl.DataFrame with columns: group_keys + flag
+    """
+    # Step 1: Get all combinations
+    unique_vals = [df[col].unique().to_list() for col in group_keys]
+    all_combinations = list(product(*unique_vals))
+
+    # Step 2: Build flag rows
+    rows = []
+    for comb in all_combinations:
+        condition = pl.col(value_col) > 0
+        for col, val in zip(group_keys, comb, strict=False):
+            condition &= (pl.col(col) == val)
+
+        flag = int(df.filter(condition).height > 0)
+        row = {col: val for col, val in zip(group_keys, comb, strict=False)}
+        row[flag_col_name or f"{'_'.join(group_keys)}_flag"] = flag
+        rows.append(row)
+
+    return pl.DataFrame(rows)
+
+
+@df_io_polars(return_type="polars")
+def compute_category_ratio(
+    df: pl.DataFrame,
+    group_key: str,
+    category_col: str,
+    count_col: str = "count",
+    output_suffix: str = "_count_ratio"
+) -> pl.DataFrame:
+    """
+    For each group_key, compute ratio of each category's count to total count.
+
+    Args:
+        df: Polars DataFrame
+        group_key: Column to group by (e.g., 顧客CD)
+        category_col: Column with categorical values
+        count_col: Name of count column (default: "count")
+        output_suffix: Suffix for ratio columns
+
+    Returns:
+        Wide-format DataFrame with group_key and ratio columns per category
+    """
+    count_df = (
+        df.group_by([group_key, category_col])
+        .agg(pl.len().alias(count_col))
+    )
+
+    total_df = (
+        count_df.group_by(group_key)
+        .agg(pl.col(count_col).sum().alias("total"))
+    )
+
+    merged = count_df.join(total_df, on=group_key)
+    merged = merged.with_columns([
+        (pl.col(count_col) / pl.col("total")).alias("ratio")
+    ])
+
+    pivot = merged.pivot(
+        values="ratio",
+        index=group_key,
+        columns=category_col
+    ).rename({
+        col: str(col) + output_suffix for col in merged[category_col].unique().to_list()
+    })
+
+    return pivot
+
+
 if __name__ == "__main__":
 
     def generate_test_df() -> pd.DataFrame:
@@ -282,6 +371,7 @@ if __name__ == "__main__":
         return pd.DataFrame(rows)
 
     df = generate_test_df()
+    print(df)
 
     agg_funcs = {
         "mean": pl.col("target").mean(),
@@ -289,10 +379,11 @@ if __name__ == "__main__":
         "min": pl.col("target").min(),
         "median": pl.col("target").median(),
         "std": pl.col("target").std(),
-        "count": pl.count(),
+        "count": pl.len(),
         "n_unique": pl.col("target").n_unique()
     }
 
+    print("=== Test for aggregate_multi_category_long ===")
     result = aggregate_multi_category_long(
         df,
         group_cols=["gender", "age_group", "married"],
@@ -302,6 +393,7 @@ if __name__ == "__main__":
 
     print(result)
 
+    print("=== Test for aggregate_by_category_pivot ===")
     pivot_result = aggregate_by_category_pivot(
         df=df,
         index_col="gender",
@@ -311,3 +403,22 @@ if __name__ == "__main__":
     )
 
     print(pivot_result)
+
+    print("=== Test for flag_group_combination_existence ===")
+    flag_result = flag_group_combination_existence(
+        df=df,
+        group_keys=["gender", "age_group"],
+        value_col="target",
+        flag_col_name=None
+    )
+
+    print(flag_result)
+
+    print("=== Test for compute_category_ratio ===")
+    ratio_result = compute_category_ratio(
+        df=df,
+        group_key="gender",
+        category_col="age_group"
+    )
+
+    print(ratio_result)
