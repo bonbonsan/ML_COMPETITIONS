@@ -30,6 +30,11 @@ catboost==1.2.2
 pytorch-tabnet==4.1.0
 tensorflow==2.15.0
 
+# cannot install for Python 3.11
+# cuML for GPU-accelerated T-SNE / UMAP (CUDA 12.1)
+# Note: Install with RAPIDS extra index
+# cuml==24.4.0
+
 # VSCode上でDockerを操作する際のエラー回避
 # --extra-index-url https://download.pytorch.org/whl/cu121
 # torch==2.2.1+cu121

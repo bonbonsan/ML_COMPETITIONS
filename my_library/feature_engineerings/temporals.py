@@ -1,6 +1,7 @@
 
 from typing import List, Literal, Optional
 
+import numpy as np
 import polars as pl
 
 from my_library.utils.df_utils import DataFrameType, df_io_polars
@@ -138,3 +139,35 @@ def is_weekend(
     return df.with_columns([
         (pl.col(weekday_col).is_in([5, 6])).alias(output_col)
     ])
+
+
+@df_io_polars(return_type="polars")
+def add_weekday_cyclical_features(df: pl.DataFrame, datetime_col: str) -> pl.DataFrame:
+    """
+    Add sine and cosine cyclical encoding of weekday (0=Monday, 6=Sunday) to a Polars DataFrame.
+
+    This is useful for capturing cyclical patterns in time-series models,
+    especially when the day of the week has a periodic effect.
+
+    Args:
+        df (pl.DataFrame): Input Polars DataFrame.
+        datetime_col (str): Column name containing datetime values.
+
+    Returns:
+        pl.DataFrame: DataFrame with 'weekday_sin' and 'weekday_cos' columns added.
+    
+    Raises:
+        ValueError: If the datetime column is not of dtype `pl.Datetime`.
+    """
+    if df[datetime_col].dtype != pl.Datetime:
+        raise ValueError(f"Column '{datetime_col}' must be of type pl.Datetime")
+
+    cycle = 7
+    weekday_expr = df[datetime_col].dt.weekday()  # returns Int8 from 0 (Monday) to 6 (Sunday)
+
+    df = df.with_columns([
+        (2 * np.pi * weekday_expr / cycle).sin().alias("weekday_sin"),
+        (2 * np.pi * weekday_expr / cycle).cos().alias("weekday_cos")
+    ])
+
+    return df
