@@ -1,7 +1,7 @@
 import os
 import pickle
 from abc import ABC, abstractmethod
-from typing import Any, Dict
+from typing import Any, Dict, List, Union
 
 import pandas as pd
 
@@ -17,12 +17,12 @@ class BaseEncoder(ABC):
         pass
 
     @abstractmethod
-    def transform(self, series: pd.Series) -> pd.Series:
+    def transform(self, series: Union[pd.Series, List[Any]]) -> Union[pd.Series, List[int]]:
         """Encodes values in the given series using internal mapping."""
         pass
 
     @abstractmethod
-    def inverse_transform(self, series: pd.Series) -> pd.Series:
+    def inverse_transform(self, series: Union[pd.Series, List[int]]) -> Union[pd.Series, List[Any]]:
         """Decodes integer labels back to original values."""
         pass
 
@@ -57,9 +57,13 @@ class DictLabelEncoder(BaseEncoder):
         pass  # Not needed
 
     def transform(self, series: pd.Series) -> pd.Series:
+        if isinstance(series, list):
+            return [self.mapping.get(val, self.unknown_label) for val in series]
         return series.map(self.mapping).fillna(self.unknown_label).astype(int)
 
-    def inverse_transform(self, series: pd.Series) -> pd.Series:
+    def inverse_transform(self, series: Union[pd.Series, List[int]]) -> Union[pd.Series, List[Any]]:
+        if isinstance(series, list):
+            return [self.inverse.get(val, None) for val in series]
         return series.map(self.inverse)
 
     def get_mapping(self) -> Dict[Any, int]:
@@ -103,15 +107,25 @@ class AutoLabelEncoder(BaseEncoder):
         self.inverse = {idx: val for val, idx in self.mapping.items()}
         self.fitted = True
 
-    def transform(self, series: pd.Series) -> pd.Series:
+    def transform(self, series: Union[pd.Series, List[Any]]) -> Union[pd.Series, List[int]]:
         if not self.fitted:
             raise ValueError("AutoLabelEncoder must be fit before transform.")
-        return series.map(self.mapping).fillna(self.unknown_label).astype(int)
+        if isinstance(series, list):
+            return [self.mapping.get(val, self.unknown_label) for val in series]
+        elif isinstance(series, pd.Series):
+            return series.map(self.mapping).fillna(self.unknown_label).astype(int)
+        else:
+            raise TypeError("Input to transform() must be a pandas Series or a list.")
 
-    def inverse_transform(self, series: pd.Series) -> pd.Series:
+    def inverse_transform(self, series: Union[pd.Series, List[int]]) -> Union[pd.Series, List[Any]]:
         if not self.fitted:
             raise ValueError("AutoLabelEncoder must be fit before inverse_transform.")
-        return series.map(self.inverse)
+        if isinstance(series, list):
+            return [self.inverse.get(val, None) for val in series]
+        elif isinstance(series, pd.Series):
+            return series.map(self.inverse)
+        else:
+            raise TypeError("Input to inverse_transform() must be a pandas Series or a list.")
 
     def get_mapping(self) -> Dict[Any, int]:
         return self.mapping
