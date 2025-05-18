@@ -252,3 +252,64 @@ class TargetMeanEncoder(BaseEncoder):
         encoder.columns = data["columns"]
         encoder.fitted = data["fitted"]
         return encoder
+
+
+class FrequencyEncoder(BaseEncoder):
+    """
+    Frequency encoder that maps each category to its frequency (as a proportion).
+    Useful for converting high-cardinality categorical features to numeric features.
+
+    Args:
+        normalize (bool): If True, use relative frequencies (proportions). If False, use raw counts.
+    """
+
+    def __init__(self, normalize: bool = True):
+        self.normalize = normalize
+        self.mapping: Dict[Any, float] = {}
+        self.fitted: bool = False
+
+    def fit(self, series: pd.Series) -> None:
+        value_counts = series.value_counts(normalize=self.normalize)
+        self.mapping = value_counts.to_dict()
+        self.fitted = True
+
+    def transform(self, series: Union[pd.Series, List[Any]]) -> Union[pd.Series, List[float]]:
+        if not self.fitted:
+            raise RuntimeError("FrequencyEncoder must be fit before transform.")
+
+        if isinstance(series, list):
+            return [self.mapping.get(x, 0.0) for x in series]
+        elif isinstance(series, pd.Series):
+            return series.map(lambda x: self.mapping.get(x, 0.0)).astype(float)
+        else:
+            raise TypeError("Input to transform() must be a pandas Series or list.")
+
+    def inverse_transform(
+            self, series: Union[pd.Series, List[float]]) -> Union[pd.Series, List[Any]]:
+        raise NotImplementedError("FrequencyEncoder does not support inverse_transform.")
+
+    def get_mapping(self) -> Dict[Any, float]:
+        if not self.fitted:
+            raise RuntimeError("FrequencyEncoder must be fit before calling get_mapping.")
+        return self.mapping
+
+    def save(self, filepath: str) -> None:
+        with open(filepath, 'wb') as f:
+            pickle.dump({
+                "normalize": self.normalize,
+                "mapping": self.mapping,
+                "fitted": self.fitted,
+            }, f)
+
+    @classmethod
+    def load(cls, filepath: str) -> "FrequencyEncoder":
+        if not os.path.exists(filepath):
+            raise FileNotFoundError(f"Encoder file not found: {filepath}")
+
+        with open(filepath, 'rb') as f:
+            data = pickle.load(f)
+
+        encoder = cls(normalize=data["normalize"])
+        encoder.mapping = data["mapping"]
+        encoder.fitted = data["fitted"]
+        return encoder
