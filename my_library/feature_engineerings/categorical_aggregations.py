@@ -1,11 +1,16 @@
 from functools import reduce
 from itertools import product
-from typing import Callable, Dict, List
+from typing import Callable, Dict, List, Optional
 
 import pandas as pd
 import polars as pl
 
-from my_library.utils.df_utils import DataFrameType, df_io_polars, get_unique_values
+from my_library.utils.df_utils import (
+    DataFrameType,
+    df_io_polars,
+    filter_all_conditions,
+    get_unique_values,
+)
 
 
 @df_io_polars(return_type="polars")
@@ -341,6 +346,40 @@ def compute_category_ratio(
     return pivot
 
 
+@df_io_polars(return_type="polars")
+def compute_conditional_aggregates(
+    df: DataFrameType,
+    group_cols: List[str],
+    agg_func_map: Dict[str, Callable[[pl.Series], float]],
+    conditions: Optional[List[pl.Expr]] = None,
+    default_value: float = -10000.0
+) -> pl.DataFrame:
+    """
+    Filter a Polars DataFrame by given conditions, then compute aggregations over
+    specified categorical columns. This function wraps `filter_all_conditions`
+    and `aggregate_multi_category_long`.
+
+    Args:
+        df (DataFrameType): Input dataframe.
+        group_cols (List[str]): List of categorical columns to group by.
+        agg_func_map (Dict[str, Callable]): Aggregation functions applied to filtered df.
+        conditions (Optional[List[pl.Expr]]): List of Polars expressions to filter rows.
+        default_value (float): Value used to fill missing group combinations.
+
+    Returns:
+        pl.DataFrame: Aggregated long-format dataframe after filtering.
+    """
+    if conditions:
+        df = filter_all_conditions(df, *conditions)
+
+    return aggregate_multi_category_long(
+        df=df,
+        group_cols=group_cols,
+        agg_func_map=agg_func_map,
+        default_value=default_value
+    )
+
+
 if __name__ == "__main__":
 
     def generate_test_df() -> pd.DataFrame:
@@ -427,3 +466,17 @@ if __name__ == "__main__":
     )
 
     print(ratio_result)
+
+    print("=== Test for compute_conditional_aggregates ===")
+    conditional_result = compute_conditional_aggregates(
+        df=df,
+        group_cols=["gender", "age_group"],
+        agg_func_map={
+            "mean": pl.col("target").mean(),
+            "count": pl.len()
+        },
+        conditions=[pl.col("target") > 1],
+        default_value=-9999
+    )
+
+    print(conditional_result)
