@@ -171,3 +171,208 @@ def add_weekday_cyclical_features(df: pl.DataFrame, datetime_col: str) -> pl.Dat
     ])
 
     return df
+
+
+@df_io_polars(return_type="polars")
+def compute_first_last_features(
+    df: pl.DataFrame,
+    user_col: str,
+    time_col: str,
+    event_col: Optional[str] = None
+) -> pl.DataFrame:
+    """
+    Compute the first and last timestamps (and optionally event types) per user.
+
+    Parameters:
+        df (pl.DataFrame): Input log data.
+        user_col (str): Column name representing the user ID.
+        time_col (str): Column name representing the timestamp (datetime type).
+        event_col (str, optional): Column name for event type. If None, event is not processed.
+
+    Returns:
+        pl.DataFrame: Aggregated features including first/last timestamp and duration range.
+    """
+    sort_df = df.sort(time_col)
+    aggs = [
+        pl.col(time_col).first().alias("first_timestamp"),
+        pl.col(time_col).last().alias("last_timestamp"),
+        (pl.col(time_col).last() - pl.col(time_col).first()).dt.total_seconds()\
+            .alias("time_range_sec"),
+    ]
+    if event_col:
+        aggs.extend([
+            pl.col(event_col).first().alias("first_event"),
+            pl.col(event_col).last().alias("last_event"),
+        ])
+    return sort_df.group_by(user_col).agg(aggs)
+
+
+@df_io_polars(return_type="polars")
+def compute_time_diff_stats(
+    df: pl.DataFrame,
+    user_col: str,
+    time_col: str
+) -> pl.DataFrame:
+    """
+    Compute statistical summaries of time intervals between actions for each user.
+
+    Parameters:
+        df (pl.DataFrame): Input log data.
+        user_col (str): Column name for user ID.
+        time_col (str): Column name for timestamp (datetime type).
+
+    Returns:
+        pl.DataFrame: Time interval statistics (mean, median, std, max).
+    """
+    df = df.sort([user_col, time_col])
+    df = df.with_columns([
+        pl.col(time_col).cast(pl.Datetime).diff().dt.total_seconds().alias("time_diff_sec")
+    ])
+    return df.group_by(user_col).agg([
+        pl.col("time_diff_sec").mean().alias("mean_interval"),
+        pl.col("time_diff_sec").median().alias("median_interval"),
+        pl.col("time_diff_sec").std().alias("std_interval"),
+        pl.col("time_diff_sec").max().alias("max_interval"),
+    ])
+
+
+@df_io_polars(return_type="polars")
+def compute_event_lag_features(
+    df: pl.DataFrame,
+    user_col: str,
+    time_col: str,
+    event_col: str,
+    target_event: str
+) -> pl.DataFrame:
+    """
+    Compute the time elapsed since the last occurrence of a target event.
+
+    Parameters:
+        df (pl.DataFrame): Input log data.
+        user_col (str): Column name for user ID.
+        time_col (str): Column name for timestamp (datetime type).
+        event_col (str): Column name for event type.
+        target_event (str): Specific event to track for lag computation.
+
+    Returns:
+        pl.DataFrame: Log with additional column 'since_last_event_sec'.
+    """
+    df = df.sort([user_col, time_col])
+    df = df.with_columns([
+        pl.when(pl.col(event_col) == target_event)
+          .then(pl.col(time_col))
+          .otherwise(None)
+          .alias("event_time")
+    ])
+    df = df.with_columns([
+        pl.when(pl.col(event_col) == target_event)
+        .then(pl.col(time_col))
+        .otherwise(None)
+        .alias("event_time")
+    ])
+
+    # 「last_event_time」を forward fill 後に、新しい df として分けて保持
+    df = df.with_columns([
+        pl.col("event_time").fill_null(strategy="forward").alias("last_event_time")
+    ])
+
+    # 「last_event_time」ができた後に使う
+    df = df.with_columns([
+        (pl.col(time_col) - pl.col("last_event_time")).dt.total_seconds()\
+            .alias("since_last_event_sec")
+    ])
+
+    return df.select([user_col, time_col, event_col, "since_last_event_sec"])
+
+
+@df_io_polars(return_type="polars")
+def compute_consecutive_days_features(
+    df: pl.DataFrame,
+    user_col: str,
+    time_col: str
+) -> pl.DataFrame:
+    """
+    Compute maximum streak of consecutive login days per user.
+
+    Parameters:
+        df (pl.DataFrame): Input log data.
+        user_col (str): Column name for user ID.
+        time_col (str): Column name for timestamp (datetime type).
+
+    Returns:
+        pl.DataFrame: User-wise maximum login streak.
+    """
+    df = df.with_columns([
+        pl.col(time_col).dt.date().alias("date")
+    ]).unique([user_col, "date"])
+
+    df = df.sort([user_col, "date"])
+    df = df.with_columns([
+        (pl.col("date").cast(pl.Int32) - pl.col("date").cast(pl.Int32).shift(1)).alias("gap")
+    ])
+
+    def count_max_streak(gaps: List[int]) -> int:
+        streak = max_streak = 1
+        for g in gaps[1:]:
+            if g == 1:
+                streak += 1
+                max_streak = max(max_streak, streak)
+            else:
+                streak = 1
+        return max_streak
+
+    result = []
+    for user_id, group in df.group_by([user_col]):
+        gap_list = group["gap"].to_list()
+        max_streak = count_max_streak(gap_list)
+        result.append((user_id, max_streak))
+
+    return pl.DataFrame(result, schema=[user_col, "max_login_streak"])
+
+
+if __name__ == "__main__":
+    import random
+    from datetime import datetime, timedelta
+
+    # --- サンプルデータの作成 ---
+    random.seed(42)
+    user_ids = ["A", "B", "C"]
+    events = ["view", "cart", "buy"]
+
+    base_time = datetime(2024, 1, 1, 8, 0, 0)
+
+    data = []
+    for uid in user_ids:
+        for _ in range(7):
+            timestamp = base_time + timedelta(hours=random.randint(0, 72))
+            event = random.choice(events)
+            data.append((uid, timestamp, event))
+
+    df = pl.DataFrame(data, schema=["user_id", "timestamp", "event"])
+    df = df.sort(["user_id", "timestamp"])
+
+    print("🔹元データ")
+    print(df)
+
+    # --- 特徴量作成 ---
+    print("\n🔹First/Last Features")
+    print(compute_first_last_features(
+        df, user_col="user_id", time_col="timestamp", event_col="event")
+        )
+
+    print("\n🔹Time Interval Stats")
+    print(compute_time_diff_stats(df, user_col="user_id", time_col="timestamp"))
+
+    print("\n🔹Lag from Last 'cart' Event")
+    print(compute_event_lag_features(
+        df, user_col="user_id", time_col="timestamp", event_col="event", target_event="cart")
+        )
+
+    print("\n🔹Max Consecutive Login Days")
+    print(compute_consecutive_days_features(df, user_col="user_id", time_col="timestamp"))
+
+    print("\n🔹Weighted Recent History Score (example)")
+    history = [0, 1, 1, 0, 1]  # 仮のユーザー履歴
+    from my_library.utils.array_utils import apply_weighted_decay
+    score = apply_weighted_decay(history, base=0.1)
+    print(f"Input: {history}, Weighted Score: {score:.5f}")

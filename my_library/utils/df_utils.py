@@ -135,6 +135,34 @@ def filter_by_date_range(
 
 
 @df_io_polars(return_type="polars")
+def filter_all_conditions(
+    df: pl.DataFrame,
+    *conditions: pl.Expr
+) -> pl.DataFrame:
+    """
+    Filters a Polars DataFrame by applying all given conditions (logical AND).
+
+    Args:
+        df (pl.DataFrame): The input DataFrame.
+        *conditions (pl.Expr): Any number of Polars expression conditions (e.g., pl.col("x") > 0).
+
+    Returns:
+        pl.DataFrame: A filtered DataFrame where all conditions are True.
+
+    Raises:
+        ValueError: If no conditions are provided.
+    """
+    if not conditions:
+        raise ValueError("[filter_all_conditions] At least one condition must be provided.")
+
+    combined_condition = conditions[0]
+    for cond in conditions[1:]:
+        combined_condition &= cond
+
+    return df.filter(combined_condition)
+
+
+@df_io_polars(return_type="polars")
 def rename_columns_with_tag(
     df: pl.DataFrame,
     cols: List[str],

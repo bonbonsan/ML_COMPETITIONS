@@ -380,7 +380,12 @@ if __name__ == "__main__":
         "median": pl.col("target").median(),
         "std": pl.col("target").std(),
         "count": pl.len(),
-        "n_unique": pl.col("target").n_unique()
+        "n_unique": pl.col("target").n_unique(),
+        "exists": (pl.len() > 0).cast(pl.Int8),
+        "skew": pl.col("target").skew(),
+        "kurt": pl.col("target").kurtosis(),
+        "q1": pl.col("target").quantile(0.25, "nearest"),
+        "q3": pl.col("target").quantile(0.75, "nearest")
     }
 
     print("=== Test for aggregate_multi_category_long ===")
