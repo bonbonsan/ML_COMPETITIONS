@@ -208,35 +208,6 @@ def compute_first_last_features(
 
 
 @df_io_polars(return_type="polars")
-def compute_time_diff_stats(
-    df: pl.DataFrame,
-    user_col: str,
-    time_col: str
-) -> pl.DataFrame:
-    """
-    Compute statistical summaries of time intervals between actions for each user.
-
-    Parameters:
-        df (pl.DataFrame): Input log data.
-        user_col (str): Column name for user ID.
-        time_col (str): Column name for timestamp (datetime type).
-
-    Returns:
-        pl.DataFrame: Time interval statistics (mean, median, std, max).
-    """
-    df = df.sort([user_col, time_col])
-    df = df.with_columns([
-        pl.col(time_col).cast(pl.Datetime).diff().dt.total_seconds().alias("time_diff_sec")
-    ])
-    return df.group_by(user_col).agg([
-        pl.col("time_diff_sec").mean().alias("mean_interval"),
-        pl.col("time_diff_sec").median().alias("median_interval"),
-        pl.col("time_diff_sec").std().alias("std_interval"),
-        pl.col("time_diff_sec").max().alias("max_interval"),
-    ])
-
-
-@df_io_polars(return_type="polars")
 def compute_event_lag_features(
     df: pl.DataFrame,
     user_col: str,
@@ -331,35 +302,6 @@ def compute_consecutive_days_features(
 
 
 @df_io_polars(return_type="polars")
-def compute_grouped_momentum_ratio(
-    df: pl.DataFrame,
-    group_cols: List[str],
-    value_col: str,
-    output_col: Optional[str] = None
-) -> pl.DataFrame:
-    """
-    Compute momentum as the ratio of the current value to the group-wise mean.
-    Useful for expressing local trends such as price momentum relative to monthly or yearly average.
-
-    Args:
-        df: Polars DataFrame.
-        group_cols: List of columns to group by (e.g., ["store_id", "item_id", "month"]).
-        value_col: Name of the column to compute momentum on (e.g., "sell_price").
-        output_col: Optional name for the output column.
-                    Defaults to "<value_col>_momentum_<grouping>".
-
-    Returns:
-        DataFrame with added momentum column.
-    """
-    if output_col is None:
-        output_col = f"{value_col}_momentum_" + "_".join(group_cols)
-
-    return df.with_columns([
-        (pl.col(value_col) / pl.col(value_col).mean().over(group_cols)).alias(output_col)
-    ])
-
-
-@df_io_polars(return_type="polars")
 def compute_lag_features(
     df: pl.DataFrame,
     group_cols: List[str],
@@ -383,64 +325,6 @@ def compute_lag_features(
         for lag in lags
     ])
     return df
-
-
-@df_io_polars(return_type="polars")
-def compute_rolling_stats_features(
-    df: pl.DataFrame,
-    group_cols: List[str],
-    target_col: str,
-    window_sizes: List[int],
-    shift: int = 1,
-    stats: List[str] = None
-) -> pl.DataFrame:
-    """
-    Efficient computation of rolling stats (mean, std, etc.) using Polars native rolling functions.
-
-    Only supports fast built-in functions: mean, std, min, max, sum, median, q1, q3.
-
-    Args:
-        df: Input dataframe.
-        group_cols: Columns to group by.
-        target_col: Column to compute on.
-        window_sizes: Rolling window sizes (e.g., [7, 14, 30]).
-        shift: Shift before rolling to avoid leakage (e.g., 1 for prediction-safe).
-        stats: List of stats to compute. Supported:
-               "mean", "std", "min", "max", "sum", "median", "q1", "q3".
-
-    Returns:
-        DataFrame with new rolling feature columns.
-    """
-    if stats is None:
-        stats = ["mean", "std"]
-        
-    supported_stats = {
-        "mean": lambda s, w: s.rolling_mean(w),
-        "std": lambda s, w: s.rolling_std(w),
-        "min": lambda s, w: s.rolling_min(w),
-        "max": lambda s, w: s.rolling_max(w),
-        "sum": lambda s, w: s.rolling_sum(w),
-        "median": lambda s, w: s.rolling_median(w),
-        "q1": lambda s, w: s.rolling_quantile(
-            window_size=w, quantile=0.25, interpolation="nearest"
-            ),
-        "q3": lambda s, w: s.rolling_quantile(
-            window_size=w, quantile=0.75, interpolation="nearest"
-            ),
-    }
-
-    exprs = []
-    for win in window_sizes:
-        shifted = pl.col(target_col).shift(shift)
-        for stat in stats:
-            if stat not in supported_stats:
-                raise ValueError(f"Unsupported stat: {stat}")
-            expr = supported_stats[stat](shifted, win).over(group_cols).alias(
-                f"{target_col}_rolling_{stat}_{win}"
-            )
-            exprs.append(expr)
-
-    return df.with_columns(exprs)
 
 
 if __name__ == "__main__":
@@ -472,9 +356,6 @@ if __name__ == "__main__":
     print(compute_first_last_features(
         df, user_col="user_id", time_col="timestamp", event_col="event")
         )
-
-    print("\n🔹Time Interval Stats")
-    print(compute_time_diff_stats(df, user_col="user_id", time_col="timestamp"))
 
     print("\n🔹Lag from Last 'cart' Event")
     print(compute_event_lag_features(
