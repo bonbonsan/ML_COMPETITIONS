@@ -35,9 +35,12 @@ build.log
 
 # Projects & Outputs
 logs/*
+!my_library/logs/
+!my_library/logs/README.md
 *.pkl
 projects/my_projects/*
 projects/others/*
+documents/
 
 # Python artifacts
 __pycache__/
