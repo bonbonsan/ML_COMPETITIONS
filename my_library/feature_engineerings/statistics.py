@@ -26,7 +26,13 @@ def compute_time_diff_stats(
     """
     df = df.sort([user_col, time_col])
     df = df.with_columns([
-        pl.col(time_col).cast(pl.Datetime).diff().dt.total_seconds().alias("time_diff_sec")
+        (
+            pl.col(time_col)
+            .cast(pl.Datetime)
+            .diff()
+            .over(user_col)
+            .dt.total_seconds()
+        ).alias("time_diff_sec")
     ])
     return df.group_by(user_col).agg([
         pl.col("time_diff_sec").mean().alias("mean_interval"),
@@ -130,8 +136,11 @@ def compute_change_rate_features(
     rate_col = f"{output_col}_rate"
 
     df = df.with_columns([
-        pl.col(value_col).diff().alias(diff_col),
-        (pl.col(value_col).diff() / pl.col(value_col).shift(1)).alias(rate_col),
+        pl.col(value_col).diff().over(group_cols).alias(diff_col),
+        (
+            pl.col(value_col).diff().over(group_cols)
+            / pl.col(value_col).shift(1).over(group_cols)
+        ).alias(rate_col),
     ])
 
     return df.group_by(group_cols).agg([
